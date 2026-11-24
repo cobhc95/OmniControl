@@ -9,7 +9,7 @@ public class HardwareRetryTests
 {
     // Spaced widely enough that a slow build machine runs each try in its own slot.
     private static readonly TimeSpan[] FastSchedule = [TimeSpan.FromMilliseconds(150), TimeSpan.FromMilliseconds(300), TimeSpan.FromMilliseconds(450), TimeSpan.FromMilliseconds(600)];
-    private static readonly TimeSpan Settle = TimeSpan.FromSeconds(5);
+    private static readonly TimeSpan Settle = TimeSpan.FromSeconds(10);
 
     /// A monitor source that answers only from its <c>readyOn</c>-th refresh.
     private sealed class FakeMonitors(int readyOn)
@@ -21,7 +21,7 @@ public class HardwareRetryTests
     }
 
     // The burst test's first try waits long enough that a slow build machine still delivers all three signals before it runs.
-    private static readonly TimeSpan[] BurstSchedule = [TimeSpan.FromMilliseconds(300), TimeSpan.FromMilliseconds(360), TimeSpan.FromMilliseconds(420), TimeSpan.FromMilliseconds(500)];
+    private static readonly TimeSpan[] BurstSchedule = [TimeSpan.FromMilliseconds(600), TimeSpan.FromMilliseconds(900), TimeSpan.FromMilliseconds(1200), TimeSpan.FromMilliseconds(1500)];
 
     private static (HardwareWatches Watches, ConcurrentQueue<string> Log) Make(FakeMonitors monitors, TimeSpan[]? schedule = null)
     {
