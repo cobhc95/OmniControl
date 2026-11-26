@@ -3,6 +3,8 @@
 Versions go 0.1.0, 0.1.1 ... 0.1.9, then 0.2.0. Each release is a full GitHub release with a Setup, a Portable download and checksums.
 New entries go under "Unreleased" as work lands; a release moves them under its version.
 
+## Unreleased (0.3.7)
+
 ## 0.3.6 (26 Nov 2026)
 
 ### ✨ New
