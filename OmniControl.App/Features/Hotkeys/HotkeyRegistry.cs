@@ -205,13 +205,14 @@ public sealed partial class HotkeyRegistry : IActionRegistry, IActionRunner, IDi
     }
 
     /// Moves the level with this <see cref="HotkeyLevel.Id"/> up or down by <paramref name="percent"/> (for a mouse wheel gesture set to
-    /// change it by that much), through the registered action that moves it that way. False when no such action is registered.
-    public bool RunLevel(string levelId, bool up, int percent)
+    /// change it by that much, or with <paramref name="snap"/> to the next round stop), through the registered action that moves it that way.
+    /// False when no such action is registered.
+    public bool RunLevel(string levelId, bool up, int percent, bool snap)
     {
         var action = Actions.FirstOrDefault(a => a.Level?.Id == levelId && a.LevelDirection > 0 == up);
         if (action is null) return false;
         var chain = _chain.Value;
-        Dispatcher.UIThread.Post(() => RunNow(action, chain, a => a.RunBy(percent)), DispatcherPriority.Send);
+        Dispatcher.UIThread.Post(() => RunNow(action, chain, a => a.RunBy(percent, snap)), DispatcherPriority.Send);
         return true;
     }
 

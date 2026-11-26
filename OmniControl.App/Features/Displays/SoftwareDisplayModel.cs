@@ -1,4 +1,5 @@
 using OmniControl.App.Features.Displays.Pages;
+using OmniControl.App.Features.Hotkeys;
 
 namespace OmniControl.App.Features.Displays;
 
@@ -77,10 +78,10 @@ internal sealed class SoftwareDisplayModel
     }
 
     /// Moves this control by <paramref name="delta"/> (within its range), which applies it, and returns the new value as the share of its range the pop-up draws.
-    public int Step(LevelSpec spec, int delta)
+    public int Step(LevelSpec spec, LevelMove move)
     {
         var level = DisplayControls.Software.First(l => l.Spec == spec);
-        var now = Math.Clamp(_values[level] + delta, spec.Min, spec.Max);
+        var now = move.Snap ? StepStops.Next(_values[level], Math.Abs(move.Delta), move.Delta > 0, spec.Min, spec.Max) : Math.Clamp(_values[level] + move.Delta, spec.Min, spec.Max);
         if (now != _values[level]) Set(level, now);
         return spec.OsdPercent(_values[level]);
     }

@@ -54,6 +54,7 @@ public static class GestureCatalog
 
     private static readonly IReadOnlyList<ActionOption> Stepped = new[] { GestureOptions.Steps, GestureOptions.Reverse };
     private static readonly IReadOnlyList<ActionOption> LevelOptions = new[] { GestureOptions.Amount, GestureOptions.Reverse };
+    private static readonly IReadOnlyList<ActionOption> SnappingLevelOptions = new[] { GestureOptions.Amount, GestureOptions.Snap, GestureOptions.Reverse };
 
     private static readonly Step[] Steps =
     {
@@ -66,7 +67,7 @@ public static class GestureCatalog
     public static List<PickChoice> Choices(IEnumerable<HotkeyAction> omniActions) =>
         new[] { new PickChoice(NoAction, ActionSections.Mouse, "Default behaviour", Keywords: "no action none unassigned don't intercept normal", Heading: "Basic", Place: ActionSections.Find(ActionSections.Mouse)) }
             .Concat(omniActions.Where(a => a.Level is not null).GroupBy(a => a.Level!.Id).Select(g => g.First())
-            .Select(a => new PickChoice(a.Level!.Id, a.Section, a.Level.Name, Keywords: a.Keywords, Options: LevelOptions, Heading: a.PickerHeading, Place: a.SectionPlace)))
+            .Select(a => new PickChoice(a.Level!.Id, a.Section, a.Level.Name, Keywords: a.Keywords, Options: a.Level.CanSnap ? SnappingLevelOptions : LevelOptions, Heading: a.PickerHeading, Place: a.SectionPlace)))
             .Concat(Steps.Select(s => new PickChoice(s.Id, s.Category, s.Name, Options: s.Options, Heading: s.Heading, Place: ActionSections.Find(s.Category))))
             .ToList();
 

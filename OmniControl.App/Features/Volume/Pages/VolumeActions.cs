@@ -61,9 +61,9 @@ internal sealed class VolumeActions
     // ---- master ----
 
     /// A hotkey or wheel step of the master.
-    public void StepMaster(int delta) => Guard.OffUi("Volume: stepping the master", () =>
+    public void StepMaster(LevelMove move) => Guard.OffUi("Volume: stepping the master", () =>
     {
-        if (_steps.Step(MixerService.MasterKey, delta, ReadMaster, level => WriteMaster(level, delta), ShowMaster) is { } level) ShowMaster(level);
+        if (_steps.Step(MixerService.MasterKey, move.Delta, ReadMaster, level => WriteMaster(level, move.Delta), ShowMaster, snap: move.Snap) is { } level) ShowMaster(level);
     });
 
     private int? ReadMaster() => CoreAudio.GetMaster(out var level, out _, _mixer.MasterDeviceId) ? level : null;
@@ -102,7 +102,7 @@ internal sealed class VolumeActions
 
     /// Changes the level of, or mutes, the default recording device. Listing the recording devices and changing one are slow Windows calls
     /// that held up drawing the pop-up, so this runs off the UI thread, one step at a time, in order.
-    public void StepInput(int delta, bool toggleMute = false, bool? muteTo = null) => Guard.OffUi("Volume: stepping the microphone", () =>
+    public void StepInput(int delta, bool toggleMute = false, bool? muteTo = null, bool snap = false) => Guard.OffUi("Volume: stepping the microphone", () =>
     {
         lock (_inputStep)
         {
@@ -114,7 +114,7 @@ internal sealed class VolumeActions
             else
             {
                 if (muted && delta > 0) muted = false;
-                v = Percent.Clamp(v + delta);
+                v = snap ? StepStops.Next(v, Math.Abs(delta), delta > 0, Percent.Min, Percent.Max) : Percent.Clamp(v + delta);
             }
             _osd.Show(MicrophoneElement, muted ? 0 : v, toggleMute ? (muted ? "Microphone muted" : "Microphone on") : MicrophoneElement);
             CoreAudio.SetDeviceVolume(def.Id, v);
@@ -190,13 +190,13 @@ internal sealed class VolumeActions
 
     /// Changes the level of, or mutes, the picked combined microphones (all when <paramref name="ids"/> is null); the pop-up shows the
     /// first one's new level. Applied by its run at once (no restart). UI thread.
-    public void StepCombos(IReadOnlyList<string>? ids, int delta, bool toggleMute = false)
+    public void StepCombos(IReadOnlyList<string>? ids, int delta, bool toggleMute = false, bool snap = false)
     {
         var shown = false;
         foreach (var c in _mixer.Combined.Where(c => c.Kind == CombinedKind.Microphones && (ids is null || ids.Contains(c.Key))).ToList())
         {
             var muted = toggleMute ? !c.Muted : c.Muted && delta <= 0;
-            var level = Percent.Clamp(c.Volume + delta);
+            var level = snap ? StepStops.Next(c.Volume, Math.Abs(delta), delta > 0, Percent.Min, Percent.Max) : Percent.Clamp(c.Volume + delta);
             _osd.NoteOwnChange(MicrophoneElement);
             _mixer.SetCombinedLevel(c.Key, level, muted);
             _levels.ShowCombo(c.Key, level, muted);

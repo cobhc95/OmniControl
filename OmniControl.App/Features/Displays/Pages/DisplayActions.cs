@@ -14,12 +14,12 @@ internal static class DisplayActions
     /// ("brightness", "sw.temperature"), so it never changes. <paramref name="devices"/> is the display list of the scope chooser; null
     /// for a control that has no display (the desktop's saturation).
     public static IEnumerable<HotkeyAction> Level(LevelSpec spec, string idKey, string category, string group,
-        Action<IReadOnlyList<string>?, int> step, Func<IReadOnlyList<HotkeyDevice>>? devices)
+        Action<IReadOnlyList<string>?, LevelMove> step, Func<IReadOnlyList<HotkeyDevice>>? devices)
     {
         var level = new HotkeyLevel(idKey, spec.Label);
         var noun = devices is null ? null : Noun;
-        yield return HotkeyAction.ForLevel($"displays.{idKey}.up", $"{spec.Label} up", category, spec.Keywords, level, +1, step, noun, devices, group, spec.Section, suggestedKey: spec.SuggestedUp);
-        yield return HotkeyAction.ForLevel($"displays.{idKey}.down", $"{spec.Label} down", category, spec.Keywords, level, -1, step, noun, devices, group, spec.Section, suggestedKey: spec.SuggestedDown);
+        yield return HotkeyAction.ForSnappingLevel($"displays.{idKey}.up", $"{spec.Label} up", category, spec.Keywords, level, +1, step, noun, devices, group, spec.Section, suggestedKey: spec.SuggestedUp);
+        yield return HotkeyAction.ForSnappingLevel($"displays.{idKey}.down", $"{spec.Label} down", category, spec.Keywords, level, -1, step, noun, devices, group, spec.Section, suggestedKey: spec.SuggestedDown);
     }
 
     /// A one-off action (next colour preset, turn the screen off, reset...) that acts on the chosen displays.

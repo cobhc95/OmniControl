@@ -31,9 +31,9 @@ public sealed class GestureService
     public GestureSettings Settings { get; } = GestureSettings.Load();
 
     /// <param name="hook">The shared mouse hook (the caller starts and stops it).</param>
-    /// <param name="runLevel">Moves an OmniControl level (by its id) up or down by a percent; false when no action moves it.</param>
+    /// <param name="runLevel">Moves an OmniControl level (by its id) up or down by a percent, or to the next round stop; false when no action moves it.</param>
     /// <param name="scopes">Says whether a gesture works in the app the user is in (the Apps chip of its group and cards).</param>
-    public GestureService(MouseHook hook, Func<string, bool, int, bool> runLevel, Action<string> report, AppScopeGate scopes)
+    public GestureService(MouseHook hook, Func<string, bool, int, bool, bool> runLevel, Action<string> report, AppScopeGate scopes)
     {
         _scopes = scopes;
         _runner = new GestureActionRunner(runLevel, report);

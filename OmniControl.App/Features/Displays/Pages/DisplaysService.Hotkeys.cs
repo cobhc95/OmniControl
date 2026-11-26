@@ -45,7 +45,7 @@ public sealed partial class DisplaysService
         {
             var captured = level;
             actions.AddRange(DisplayActions.Level(level.Spec, level.Spec.Key, Title, hardware,
-                (ids, delta) => StepHardware(captured, ids, delta), HardwareDevices));
+                (ids, move) => StepHardware(captured, ids, move), HardwareDevices));
         }
 
         // One generic "next" per choice: the values differ from monitor to monitor, so a named input would only fit some.
@@ -77,7 +77,7 @@ public sealed partial class DisplaysService
         {
             var spec = level.Spec;
             actions.AddRange(DisplayActions.Level(spec, DisplayControls.SoftwareKey(spec), Title, software,
-                (ids, delta) => StepSoftware(spec, ids, delta), SoftwareDevices));
+                (ids, move) => StepSoftware(spec, ids, move), SoftwareDevices));
         }
         actions.Add(DisplayActions.Once("displays.sw.preset.next", "Next display preset", "digital software preset picture saved profile", Title, software, VcpSections.Presets,
             _ => NextPreset(), devices: null));
@@ -93,7 +93,7 @@ public sealed partial class DisplaysService
     private IEnumerable<HotkeyAction> DesktopActions(string software)
     {
         var spec = DisplayControls.SoftwareSaturation;
-        foreach (var action in DisplayActions.Level(spec, DisplayControls.SoftwareKey(spec), Title, software, (_, delta) => _osd.Show(spec.Osd, _desktop.Step(delta)), devices: null))
+        foreach (var action in DisplayActions.Level(spec, DisplayControls.SoftwareKey(spec), Title, software, (_, move) => _osd.Show(spec.Osd, _desktop.Step(move)), devices: null))
             yield return action;
         yield return DisplayActions.Once(GrayscaleId, "Toggle grayscale", "digital software grayscale black white saturation", Title, software, VcpSections.Colour,
             _ => _desktop.SetGrayscale(!_desktop.Grayscale), devices: null, highlightState: GrayscaleId);
@@ -121,7 +121,7 @@ public sealed partial class DisplaysService
 
     /// Steps the level on the chosen hardware displays that have it; the pop-up shows the first display that reports one. The displays
     /// are chosen here on the UI thread (their models are read), the monitors are written on a worker thread.
-    private void StepHardware(HardwareLevel level, IReadOnlyList<string>? ids, int delta)
+    private void StepHardware(HardwareLevel level, IReadOnlyList<string>? ids, LevelMove move)
     {
         var targets = _hardware.Where(h => (ids is null || ids.Contains(h.Id)) && h.Supports(level)).ToList();
         Guard.OffUi("Displays: stepping a level", () =>
@@ -130,7 +130,7 @@ public sealed partial class DisplaysService
             void Show(int value) => _osd.Show(level.Spec.Osd, value);
             foreach (var display in targets)
             {
-                if (display.Step(level, delta, shown ? null : Show) is not { } now || shown) continue;
+                if (display.Step(level, move, shown ? null : Show) is not { } now || shown) continue;
                 Show(now);
                 shown = true;
             }
@@ -138,12 +138,12 @@ public sealed partial class DisplaysService
     }
 
     /// Steps the digital control on the chosen displays; the pop-up shows the level of the first one.
-    private void StepSoftware(LevelSpec spec, IReadOnlyList<string>? ids, int delta)
+    private void StepSoftware(LevelSpec spec, IReadOnlyList<string>? ids, LevelMove move)
     {
         int? first = null;
         foreach (var display in _softwareDisplays.Where(s => ids is null || ids.Contains(s.Id)).ToList())
         {
-            var now = display.Step(spec, delta);
+            var now = display.Step(spec, move);
             first ??= now;
         }
         if (first is { } value) _osd.Show(spec.Osd, value);

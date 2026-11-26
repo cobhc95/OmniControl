@@ -1,4 +1,5 @@
 using OmniControl.App.Features.Displays.Pages;
+using OmniControl.App.Features.Hotkeys;
 using OmniControl.App.Features.Osd;
 using OmniControl.Core.Interfaces;
 
@@ -176,9 +177,9 @@ internal sealed partial class HardwareDisplayModel
 
     /// Changes a level by <paramref name="delta"/> percent from the level last set or read and returns the new level (null when the display
     /// does not report it). <paramref name="corrected"/> hears of a correction after a re-read. Call off the UI thread.
-    public int? Step(HardwareLevel level, int delta, Action<int>? corrected)
+    public int? Step(HardwareLevel level, LevelMove move, Action<int>? corrected)
     {
-        var now = _levels.Step(KeyOf(level), delta, () => _access.ReadPercent(level.Code), p => Write(level, p), corrected);
+        var now = _levels.Step(KeyOf(level), move.Delta, () => _access.ReadPercent(level.Code), p => Write(level, p), corrected, snap: move.Snap);
         if (now is { } value) Dispatcher.UIThread.Post(() =>
         {
             if (_disposed) return;

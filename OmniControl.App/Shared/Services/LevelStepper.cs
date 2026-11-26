@@ -41,8 +41,9 @@ internal sealed class LevelStepper
     /// The level after a step of <paramref name="delta"/>, or null when the display does not report one. <paramref name="read"/> is
     /// only called here when no level is known at all; <paramref name="write"/> runs later on a worker thread, and
     /// <paramref name="corrected"/> (when given) is told the level if a re-read shows the display had been changed elsewhere. The level
-    /// stays within <paramref name="min"/>-<paramref name="max"/> (0-100 unless given). Call off the UI thread when a read is slow.
-    public int? Step(string key, int delta, Func<int?> read, Action<int> write, Action<int>? corrected, int min = Percent.Min, int max = Percent.Max)
+    /// stays within <paramref name="min"/>-<paramref name="max"/> (0-100 unless given). With <paramref name="snap"/> the step goes to the next
+    /// round stop (<see cref="StepStops"/>) in the direction of <paramref name="delta"/>. Call off the UI thread when a read is slow.
+    public int? Step(string key, int delta, Func<int?> read, Action<int> write, Action<int>? corrected, int min = Percent.Min, int max = Percent.Max, bool snap = false)
     {
         int level;
         lock (_gate)
@@ -60,7 +61,7 @@ internal sealed class LevelStepper
             // A check still waiting from an earlier step of this spin covers this step too.
             if (_pending.TryGetValue(key, out var waiting) && waiting.Check is not null) check = waiting.Check;
 
-            level = Math.Clamp(known.Level + delta, min, max);
+            level = snap ? StepStops.Next(known.Level, Math.Abs(delta), delta > 0, min, max) : Math.Clamp(known.Level + delta, min, max);
             _known[key] = (level, DateTime.UtcNow);
             _pending[key] = new Pending(level, write, check);
             if (_writing) return level;

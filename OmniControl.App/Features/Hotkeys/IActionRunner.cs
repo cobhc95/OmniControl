@@ -14,8 +14,8 @@ public interface IActionRunner
     /// Starts an action that lasts while its input is held and returns what ends it; null when it does not last with these settings.
     Action? RunHeld(string id, RunSettings settings);
 
-    /// Moves a level action up or down by <paramref name="percent"/>.
-    bool RunLevel(string levelId, bool up, int percent);
+    /// Moves a level action up or down by <paramref name="percent"/>, or with <paramref name="snap"/> to the next round stop.
+    bool RunLevel(string levelId, bool up, int percent, bool snap);
 
     /// The chain of rules that caused the run in progress; null = a person or Windows started it.
     RunChain? Chain { get; }

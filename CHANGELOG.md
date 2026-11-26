@@ -3,7 +3,16 @@
 Versions go 0.1.0, 0.1.1 ... 0.1.9, then 0.2.0. Each release is a full GitHub release with a Setup, a Portable download and checksums.
 New entries go under "Unreleased" as work lands; a release moves them under its version.
 
-## Unreleased (0.3.6)
+## 0.3.6 (26 Nov 2026)
+
+### ✨ New
+
+- **Scroll gestures:** A "Snap to round steps" switch (off by default) sits next to "Change per wheel notch" for volume, microphone, combined microphone and every display level. With it on, each notch lands on the next multiple of the amount (from 32 at 5 %, up goes to 35 and down to 30), and the real minimum and maximum stay reachable.
+
+### 🛠 Fixed
+
+- **Volume:** Hotkey and scroll steps now start from the volume Windows has after it was changed outside OmniControl (Windows' flyout, keyboard, another app). Within 10 seconds of OmniControl's last step they started from the old level.
+- **Displays:** An empty, focusable bar under "Warm light temperature" is gone: the hidden automation-rule line still drew its card, and the card now hides with the line.
 
 ## 0.3.5 (24 Nov 2026)
 

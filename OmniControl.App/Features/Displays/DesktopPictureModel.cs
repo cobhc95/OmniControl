@@ -1,4 +1,5 @@
 using OmniControl.App.Features.Displays.Pages;
+using OmniControl.App.Features.Hotkeys;
 
 namespace OmniControl.App.Features.Displays;
 
@@ -47,10 +48,10 @@ internal sealed class DesktopPictureModel
     }
 
     /// Steps the saturation and returns it as the share of its range the pop-up draws.
-    public int Step(int delta)
+    public int Step(LevelMove move)
     {
         var spec = DisplayControls.SoftwareSaturation;
-        var now = Math.Clamp(Saturation + delta, spec.Min, spec.Max);
+        var now = move.Snap ? StepStops.Next(Saturation, Math.Abs(move.Delta), move.Delta > 0, spec.Min, spec.Max) : Math.Clamp(Saturation + move.Delta, spec.Min, spec.Max);
         if (now != Saturation) ReportFailure(SetSaturation(now));
         return spec.OsdPercent(Saturation);
     }

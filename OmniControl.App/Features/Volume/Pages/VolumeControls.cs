@@ -170,8 +170,12 @@ public sealed class VolumeControls : IVolumeLevels, IDisposable
 
     // Windows says the master or the microphone changed (the OSD's own source): the levels take it at once and the states notify, so the
     // tray tiles do not wait for the next scan. A level just set here is kept, as the scan does.
-    private void OnMasterWatched(int level, bool muted) => Dispatcher.UIThread.Post(() =>
-        ((IVolumeLevels)this).ShowMaster(MasterJustChanged ? MasterVolume : level, muted));
+    private void OnMasterWatched(int level, bool muted)
+    {
+        // A change made elsewhere (Windows' flyout, keyboard, another app): the next step starts from it, not from the last level OmniControl set.
+        if (!MasterJustChanged) _actions.RememberMaster(level);
+        Dispatcher.UIThread.Post(() => ((IVolumeLevels)this).ShowMaster(MasterJustChanged ? MasterVolume : level, muted));
+    }
 
     private void OnMicrophoneWatched(int level, bool muted) => Dispatcher.UIThread.Post(() =>
     {
@@ -319,8 +323,8 @@ public sealed class VolumeControls : IVolumeLevels, IDisposable
             _ => _actions.StepInput(0, toggleMute: true)) { Icon = MicIcon, Editor = _actions.MicMuteEditor(), Family = VolumeStates.MicMuteFamily.Family, FamilyRole = OnOffFamily.ToggleRole };
         _hotkeys.Register(VolumeStates.MicMuteFamily.Siblings(micMute, muted => _actions.StepInput(0, toggleMute: true, muteTo: muted)).Prepend(micMute));
         _hotkeys.Register(new HotkeyAction("volume.mic.fx", "Toggle microphone FX", _title, "sound audio input microphone mic fx effects chain", _ => ToggleMicFx()) { Icon = FxIcon });
-        _hotkeys.Register(HotkeyAction.ForLevel("volume.mic.up", "Microphone level up", _title, "sound audio input microphone mic louder", mic, +1, (_, delta) => _actions.StepInput(delta), icon: MicIcon));
-        _hotkeys.Register(HotkeyAction.ForLevel("volume.mic.down", "Microphone level down", _title, "sound audio input microphone mic quieter", mic, -1, (_, delta) => _actions.StepInput(delta), icon: MicIcon));
+        _hotkeys.Register(HotkeyAction.ForSnappingLevel("volume.mic.up", "Microphone level up", _title, "sound audio input microphone mic louder", mic, +1, (_, move) => _actions.StepInput(move.Delta, snap: move.Snap), icon: MicIcon));
+        _hotkeys.Register(HotkeyAction.ForSnappingLevel("volume.mic.down", "Microphone level down", _title, "sound audio input microphone mic quieter", mic, -1, (_, move) => _actions.StepInput(move.Delta, snap: move.Snap), icon: MicIcon));
 
         // Combined microphones: one action per control over every combined microphone (the user picks all or some; the Shortcuts page
         // reads the device source each time it is shown).
@@ -328,14 +332,14 @@ public sealed class VolumeControls : IVolumeLevels, IDisposable
         _comboHotkeys.Add(new HotkeyAction("volume.combomic.mute", "Toggle combined microphone mute", _title,
             "sound audio input combined microphone mic mics mix mute silence", ids => OnUi(() => _actions.StepCombos(ids, 0, toggleMute: true)),
             ComboNoun, ComboDevices) { Icon = MicIcon });
-        _comboHotkeys.Add(HotkeyAction.ForLevel("volume.combomic.up", "Combined microphone level up", _title,
-            "sound audio input combined microphone mic mics mix louder", combo, +1, (ids, delta) => OnUi(() => _actions.StepCombos(ids, delta)), ComboNoun, ComboDevices, icon: MicIcon));
-        _comboHotkeys.Add(HotkeyAction.ForLevel("volume.combomic.down", "Combined microphone level down", _title,
-            "sound audio input combined microphone mic mics mix quieter", combo, -1, (ids, delta) => OnUi(() => _actions.StepCombos(ids, delta)), ComboNoun, ComboDevices, icon: MicIcon));
+        _comboHotkeys.Add(HotkeyAction.ForSnappingLevel("volume.combomic.up", "Combined microphone level up", _title,
+            "sound audio input combined microphone mic mics mix louder", combo, +1, (ids, move) => OnUi(() => _actions.StepCombos(ids, move.Delta, snap: move.Snap)), ComboNoun, ComboDevices, icon: MicIcon));
+        _comboHotkeys.Add(HotkeyAction.ForSnappingLevel("volume.combomic.down", "Combined microphone level down", _title,
+            "sound audio input combined microphone mic mics mix quieter", combo, -1, (ids, move) => OnUi(() => _actions.StepCombos(ids, move.Delta, snap: move.Snap)), ComboNoun, ComboDevices, icon: MicIcon));
         _hotkeys.Register(_comboHotkeys);
 
-        _hotkeys.Register(HotkeyAction.ForLevel("volume.up", "Volume up", _title, "sound audio master louder", volume, +1, (_, delta) => _actions.StepMaster(delta), keyEquivalent: "VolumeUp"));
-        _hotkeys.Register(HotkeyAction.ForLevel("volume.down", "Volume down", _title, "sound audio master quieter", volume, -1, (_, delta) => _actions.StepMaster(delta), keyEquivalent: "VolumeDown"));
+        _hotkeys.Register(HotkeyAction.ForSnappingLevel("volume.up", "Volume up", _title, "sound audio master louder", volume, +1, (_, move) => _actions.StepMaster(move), keyEquivalent: "VolumeUp"));
+        _hotkeys.Register(HotkeyAction.ForSnappingLevel("volume.down", "Volume down", _title, "sound audio master quieter", volume, -1, (_, move) => _actions.StepMaster(move), keyEquivalent: "VolumeDown"));
         var mute = new HotkeyAction("volume.mute", "Toggle mute", _title, "sound audio master mute silence", _ => _actions.ToggleMasterMute())
             { SuggestedIcons = new[] { "mute", "volume" }, Family = VolumeStates.MuteFamily.Family, FamilyRole = OnOffFamily.ToggleRole, KeyEquivalent = "VolumeMute" };
         _hotkeys.Register(VolumeStates.MuteFamily.Siblings(mute, muted => _actions.ToggleMasterMute(muted)).Prepend(mute));

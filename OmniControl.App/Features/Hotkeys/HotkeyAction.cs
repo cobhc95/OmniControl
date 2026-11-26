@@ -17,7 +17,8 @@ public sealed record CountdownWords(string Doing, string Going);
 
 /// A level that a pair of actions moves up and down (volume, brightness...). <see cref="Id"/> is stored by the gestures that drive it
 /// (gestures.json), so it never changes; <see cref="Name"/> is what the gesture picker calls it.
-public sealed record HotkeyLevel(string Id, string Name);
+/// <see cref="CanSnap"/>: its actions can land on round stops (<see cref="LevelMove.Snap"/>), so a wheel gesture offers "Snap to round steps".
+public sealed record HotkeyLevel(string Id, string Name, bool CanSnap = false);
 
 /// Actions that are the directions of one thing ("Pointer speed": Up, Down) and are listed as ONE row in the Actions and Hotkeys window and the
 /// Choose-the-action window. Every direction stays its own <see cref="HotkeyAction"/> with its own id, keys and settings; only the lists group them.
@@ -39,7 +40,7 @@ public sealed partial class HotkeyAction : HotkeyTarget, Shared.Ui.Pages.IEditor
     string Shared.Ui.Pages.IEditorItem.Label => Title;
 
     private readonly Action<IReadOnlyList<string>?> _run;
-    private readonly Action<IReadOnlyList<string>?, int>? _stepBy;
+    private readonly Action<IReadOnlyList<string>?, LevelMove>? _stepBy;
     private readonly Func<IReadOnlyList<HotkeyDevice>>? _deviceSource;
     private readonly string _allText;
     private readonly string _noun;
@@ -296,7 +297,7 @@ public sealed partial class HotkeyAction : HotkeyTarget, Shared.Ui.Pages.IEditor
     /// <param name="subgroup">Part of the group ("Presets"); null when the group is short enough not to need one.</param>
     public HotkeyAction(string id, string title, string category, string keywords,
         Action<IReadOnlyList<string>?> run, string? deviceNoun = null,
-        Func<IReadOnlyList<HotkeyDevice>>? devices = null, Action<IReadOnlyList<string>?, int>? stepBy = null,
+        Func<IReadOnlyList<HotkeyDevice>>? devices = null, Action<IReadOnlyList<string>?, LevelMove>? stepBy = null,
         string? group = null, string? subgroup = null)
     {
         Id = id;
@@ -320,8 +321,20 @@ public sealed partial class HotkeyAction : HotkeyTarget, Shared.Ui.Pages.IEditor
     public static HotkeyAction ForLevel(string id, string title, string category, string keywords, HotkeyLevel level, int direction,
         Action<IReadOnlyList<string>?, int> step, string? deviceNoun = null, Func<IReadOnlyList<HotkeyDevice>>? devices = null,
         string? group = null, string? subgroup = null, string? icon = null, string? suggestedKey = null, string? keyEquivalent = null) =>
-        new(id, title, category, keywords, ids => step(ids, direction * DefaultStep), deviceNoun, devices,
-            (ids, percent) => step(ids, direction * percent), group, subgroup)
+        Create(id, title, category, keywords, level, direction, (ids, move) => step(ids, move.Delta), deviceNoun, devices, group, subgroup, icon, suggestedKey, keyEquivalent);
+
+    /// A level action whose step can land on round stops: <paramref name="step"/> gets the signed change and whether to snap (<see cref="LevelMove"/>),
+    /// and marks the level <see cref="HotkeyLevel.CanSnap"/> so the wheel gestures offer the option.
+    public static HotkeyAction ForSnappingLevel(string id, string title, string category, string keywords, HotkeyLevel level, int direction,
+        Action<IReadOnlyList<string>?, LevelMove> step, string? deviceNoun = null, Func<IReadOnlyList<HotkeyDevice>>? devices = null,
+        string? group = null, string? subgroup = null, string? icon = null, string? suggestedKey = null, string? keyEquivalent = null) =>
+        Create(id, title, category, keywords, level with { CanSnap = true }, direction, step, deviceNoun, devices, group, subgroup, icon, suggestedKey, keyEquivalent);
+
+    private static HotkeyAction Create(string id, string title, string category, string keywords, HotkeyLevel level, int direction,
+        Action<IReadOnlyList<string>?, LevelMove> step, string? deviceNoun, Func<IReadOnlyList<HotkeyDevice>>? devices,
+        string? group, string? subgroup, string? icon, string? suggestedKey, string? keyEquivalent) =>
+        new(id, title, category, keywords, ids => step(ids, new LevelMove(direction * DefaultStep)), deviceNoun, devices,
+            (ids, move) => step(ids, move with { Delta = direction * move.Delta }), group, subgroup)
         {
             Icon = icon,
             SuggestedKey = suggestedKey,
@@ -352,10 +365,10 @@ public sealed partial class HotkeyAction : HotkeyTarget, Shared.Ui.Pages.IEditor
     }
 
     /// Moves the level by <paramref name="percent"/> in the action's own direction (a level action only; others just run).
-    public void RunBy(int percent)
+    public void RunBy(int percent, bool snap = false)
     {
         if (_stepBy is null) Run();
-        else _stepBy(SelectedDeviceIds(), percent);
+        else _stepBy(SelectedDeviceIds(), new LevelMove(percent, snap));
     }
 
     /// Re-reads the available devices, keeping the user's picks.

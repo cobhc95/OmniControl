@@ -85,7 +85,7 @@ internal sealed class NoRunner : IActionRunner
     public bool Run(string id) => false;
     public bool Run(string id, RunSettings? settings) => false;
     public Action? RunHeld(string id, RunSettings settings) => null;
-    public bool RunLevel(string levelId, bool up, int percent) => false;
+    public bool RunLevel(string levelId, bool up, int percent, bool snap) => false;
     public RunChain? Chain => null;
     public void RunWithin(RunChain chain) { }
     public event Action<HotkeyAction, RunChain?>? Ran { add { } remove { } }
