@@ -25,7 +25,7 @@ public sealed partial class DisplaysPageViewModel : PageViewModel, IDisposable
         _desktop = new SoftwareGlobalItem(service.Desktop, service.Report);
         _warm = new WarmLightItem(service.WarmLight, service.Report);
         Hardware.UseSwitch(service.ScreenMaster());
-        Software = new ParentGroup("Displays/Software", DisplayControls.SoftwareGroup, string.Empty, _desktop.Cards.Concat(_warm.Cards).Cast<object>().ToList())
+        Software = new ParentGroup("Displays/Software", DisplayControls.SoftwareGroup, string.Empty, _desktop.Cards.Cast<object>().ToList())
         {
             ExpandedByDefault = true,
             Restore = service.ResetAllSoftware,
@@ -104,6 +104,7 @@ public sealed partial class DisplaysPageViewModel : PageViewModel, IDisposable
         foreach (var model in models)
             if (!_software.ContainsKey(model)) _software[model] = new SoftwareDisplayItem(model, _service.Report);
         Software.Subgroups.Clear();
+        Software.Subgroups.Add(_warm.Group);
         foreach (var model in models) Software.Subgroups.Add(_software[model].Group);
     }
 

@@ -87,9 +87,10 @@ public sealed class AutoscrollWatcher : IDisposable
                 {
                     if (SystemCommands.GetCursorPos() is { } at)
                     {
+                        var settled = last is { } prev && Math.Abs(at.X - prev.X) <= CoreTiming.AutoscrollCachePx && Math.Abs(at.Y - prev.Y) <= CoreTiming.AutoscrollCachePx;
                         still = last == (at.X, at.Y) ? still + 1 : 0;
                         last = (at.X, at.Y);
-                        if (_entry is not { } cached || !Covers(cached, at.X, at.Y))
+                        if (settled && (_entry is not { } cached || !Covers(cached, at.X, at.Y)))
                         {
                             // A pointer that has not moved over the same window keeps its answer (renewed, not asked again): a resting pointer
                             // never keeps an app answering UI Automation. The hand pointer still wins at press time (Verdict).
@@ -117,7 +118,7 @@ public sealed class AutoscrollWatcher : IDisposable
         var root = WindowQuery.RootWindowAt(x, y);
         if (root == IntPtr.Zero || WindowQuery.ProcessOf(root) is not { } process) { _entry = null; return slow; }
         var started = Environment.TickCount64;
-        if (process == Environment.ProcessId || IsShell(shell, process) || (root == slow.Window && started < slow.Until))
+        if (process == Environment.ProcessId || IsShell(shell, process) || PointerShape.IsHandShown() || (root == slow.Window && started < slow.Until))
         {
             _entry = new Entry(root, process, x, y, started, ClickVerdict.Pass);
             return slow;

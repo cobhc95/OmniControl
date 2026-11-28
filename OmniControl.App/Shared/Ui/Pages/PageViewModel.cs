@@ -59,6 +59,9 @@ public abstract class PageViewModel : ObservableObject
     /// something in step with the machine even while not on screen (registered actions of plugged devices).
     public virtual void OnWindowShownChanged(bool shown) { }
 
+    /// Called when the main window is let go after a long hide: drop rebuildable caches (such as program icons) so they can be collected.
+    public virtual void OnWindowReleased() { }
+
     /// "Show in OmniControl" (the tray panel) opened this page for one of its states: the page selects or brings forward what owns it (a smart device); nothing by default.
     public virtual void Reveal(string stateId) { }
 }

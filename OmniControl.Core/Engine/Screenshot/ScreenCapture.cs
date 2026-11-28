@@ -27,6 +27,20 @@ public static class ScreenCapture
         return found.OrderByDescending(m => m.IsPrimary).ToList();
     }
 
+    /// Every monitor's area and its work area (the area without the taskbar).
+    public static IReadOnlyList<(ScreenRect Bounds, ScreenRect Work)> WorkAreas()
+    {
+        var found = new List<(ScreenRect, ScreenRect)>();
+        bool Add(IntPtr monitor, IntPtr hdc, ref Rect rect, IntPtr data)
+        {
+            var info = new MonitorInfo { Size = Marshal.SizeOf<MonitorInfo>() };
+            if (GetMonitorInfo(monitor, ref info)) found.Add((ToRect(info.Monitor), ToRect(info.Work)));
+            return true;
+        }
+        EnumDisplayMonitors(IntPtr.Zero, IntPtr.Zero, Add, IntPtr.Zero);
+        return found;
+    }
+
     /// The whole virtual desktop: every monitor's area together.
     public static ScreenRect VirtualScreen() => new(GetSystemMetrics(SmXVirtualScreen), GetSystemMetrics(SmYVirtualScreen),
         GetSystemMetrics(SmCxVirtualScreen), GetSystemMetrics(SmCyVirtualScreen));

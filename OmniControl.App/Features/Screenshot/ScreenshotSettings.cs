@@ -31,6 +31,9 @@ public sealed class ScreenshotOptions
     public bool ShowNote { get; set; } = true;
     public StayOnTop OnTop { get; set; } = StayOnTop.Normal;
 
+    /// On: the area overlay's selection snaps to window edges and a click picks a whole window (the overlay's magnet button switches it).
+    public bool SnapToWindows { get; set; } = true;
+
     /// The folder recordings are saved in; empty = <see cref="DefaultVideoFolder"/>.
     public string VideoFolder { get; set; } = string.Empty;
 

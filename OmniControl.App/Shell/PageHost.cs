@@ -29,6 +29,18 @@ public sealed class PageHost : Panel
     /// The pages whose views may stay built besides the open page's; null keeps every built view.
     public IReadOnlyList<PageViewModel>? Kept { get => GetValue(KeptProperty); set => SetValue(KeptProperty, value); }
 
+    /// Lets go of every built page view (called before the main window closes on a long hide, so nothing inside a page stays reachable).
+    public void Clear()
+    {
+        foreach (var view in _views.Values.ToList())
+        {
+            ViewLetGo.Clear(view);
+            Children.Remove(view);
+        }
+        _views.Clear();
+        _shown = null;
+    }
+
     private void Follow()
     {
         var kept = Kept;

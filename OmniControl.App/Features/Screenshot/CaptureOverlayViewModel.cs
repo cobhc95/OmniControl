@@ -23,6 +23,10 @@ public sealed partial class CaptureOverlayViewModel : ObservableObject, IDisposa
     private readonly List<Mark> _marks = new();
     private readonly UndoHistory _history = new();
     private Drag _drag;
+    private bool _moved;
+
+    /// A press that moves less than this (screen units) before it ends is a click.
+    private const double ClickSlop = 3;
     private Grip _grip;
     private Point _dragStart;
     private ScreenRect _selectionAtStart;
@@ -61,7 +65,7 @@ public sealed partial class CaptureOverlayViewModel : ObservableObject, IDisposa
 
     public bool HasSelection => Selection is { IsEmpty: false };
     public bool ShowBars => HasSelection && !IsDragging;
-    public string SizeText => Selection is { } s ? $"{s.Width} × {s.Height}" : string.Empty;
+    public string SizeText => Selection is { } s ? $"{s.Width} × {s.Height}" : Hovered is { } w ? HoverText(w) : string.Empty;
 
     /// Tells the bindings only what really changed: moving the selection changes neither whether there is one nor its size, so a move
     /// costs the bars and the size label nothing (the bindings are resolved by reflection, on every pointer move before).
@@ -71,6 +75,7 @@ public sealed partial class CaptureOverlayViewModel : ObservableObject, IDisposa
         {
             OnPropertyChanged(nameof(HasSelection));
             OnPropertyChanged(nameof(ShowBars));
+            OnPropertyChanged(nameof(ShowSize));
         }
         if (oldValue?.Width != newValue?.Width || oldValue?.Height != newValue?.Height) OnPropertyChanged(nameof(SizeText));
     }
@@ -114,8 +119,13 @@ public sealed partial class CaptureOverlayViewModel : ObservableObject, IDisposa
     /// <param name="picture">The frozen picture; the overlay owns it from now on and releases it in <see cref="Dispose"/>.</param>
     /// <param name="monitor">Where the picture sits on the desktop (physical pixels).</param>
     /// <param name="recordAtOnce">"Record area": recording starts as soon as a selection is drawn.</param>
-    public CaptureOverlayViewModel(Bitmap picture, ScreenRect monitor, IShotOutput output, Action close, bool recordAtOnce, ToolSizes sizes)
+    /// <param name="snap">This monitor's window edges and windows, in picture pixels.</param>
+    /// <param name="choice">The magnet: snapping and window picking on or off.</param>
+    public CaptureOverlayViewModel(Bitmap picture, ScreenRect monitor, IShotOutput output, Action close, bool recordAtOnce, ToolSizes sizes,
+        WindowSnap snap, SnapChoice choice)
     {
+        _snap = snap;
+        _choice = choice;
         Picture = picture;
         _pictureBounds = new ScreenRect(0, 0, picture.PixelSize.Width, picture.PixelSize.Height);
         _monitor = monitor;
@@ -154,6 +164,8 @@ public sealed partial class CaptureOverlayViewModel : ObservableObject, IDisposa
         {
             if (Tool != DrawTool.None && HasSelection) return; // a drawing tool never throws the selection away
             _drag = Drag.Select;
+            _pressedOn = Hovered; // a click without a drag picks this window
+            SetHover(null);
             Selection = new ScreenRect((int)p.X, (int)p.Y, 0, 0);
             SelectionStarted?.Invoke(this);
         }
@@ -168,6 +180,7 @@ public sealed partial class CaptureOverlayViewModel : ObservableObject, IDisposa
             _grip = grip;
         }
         _selectionAtStart = Selection ?? default;
+        _moved = false;
         IsDragging = true;
         Redraw?.Invoke();
     }
@@ -176,11 +189,10 @@ public sealed partial class CaptureOverlayViewModel : ObservableObject, IDisposa
     {
         var dx = (int)Math.Round(p.X - _dragStart.X);
         var dy = (int)Math.Round(p.Y - _dragStart.Y);
+        if (Math.Max(Math.Abs(dx), Math.Abs(dy)) >= ClickSlop * Scale) _moved = true;
         switch (_drag)
         {
-            case Drag.Select: Selection = SelectionMath.FromDrag((int)_dragStart.X, (int)_dragStart.Y, (int)p.X, (int)p.Y, _pictureBounds); break;
-            case Drag.Move: Selection = SelectionMath.Move(_selectionAtStart, dx, dy, _pictureBounds); break;
-            case Drag.Resize: Selection = SelectionMath.Resize(_selectionAtStart, _grip, dx, dy, _pictureBounds); break;
+            case Drag.Select or Drag.Move or Drag.Resize: Selection = DragSelection(p, dx, dy); break;
             case Drag.Draw: Extend(p); PreviewChanged?.Invoke(); return;
             default: return;
         }
@@ -192,11 +204,19 @@ public sealed partial class CaptureOverlayViewModel : ObservableObject, IDisposa
         if (_drag == Drag.None) return;
         MoveTo(p);
         if (_drag == Drag.Draw && Preview is { } preview) Commit(preview);
+        var picked = _drag == Drag.Select && !_moved ? _pressedOn : null;
         if (!HasSelection) Selection = null;
-        var drawn = _drag == Drag.Select && HasSelection;
+        var drawn = _drag == Drag.Select && HasSelection && picked is null;
         Preview = null;
+        _pressedOn = null;
+        _guides.Clear();
         _drag = Drag.None;
         IsDragging = false;
+        if (picked is not null)
+        {
+            Pick(picked);
+            return;
+        }
         Redraw?.Invoke();
         if (drawn && _recordAtOnce) Record();
     }
@@ -244,7 +264,7 @@ public sealed partial class CaptureOverlayViewModel : ObservableObject, IDisposa
 
     // ---- Keys ----
 
-    /// The overlay's keys: Esc closes, Ctrl+C/S/P copy, save and print, Ctrl+Z undoes, Ctrl+Y or Ctrl+Shift+Z redoes, Ctrl+Shift+. and
+    /// The overlay's keys: Esc closes, M switches the magnet, Tab / Shift+Tab and Enter light and pick a window before a selection exists, Ctrl+C/S/P copy, save and print, Ctrl+Z undoes, Ctrl+Y or Ctrl+Shift+Z redoes, Ctrl+Shift+. and
     /// Ctrl+Shift+, make the tool's size bigger and smaller, the arrows nudge. True when the key was used.
     public bool HandleKey(Key key, KeyModifiers modifiers)
     {
@@ -259,6 +279,9 @@ public sealed partial class CaptureOverlayViewModel : ObservableObject, IDisposa
         switch (key)
         {
             case Key.Escape: Close(); return true;
+            case Key.M when modifiers == KeyModifiers.None: ToggleSnap(); return true;
+            case Key.Tab when !ctrl: return StepWindow(shift ? -1 : 1);
+            case Key.Enter when modifiers == KeyModifiers.None: return PickHovered();
             case Key.C when ctrl: Copy(); return true;
             case Key.S when ctrl: Save(); return true;
             case Key.P when ctrl: Print(); return true;

@@ -3,10 +3,14 @@ using static OmniControl.Core.Native.PdhNative;
 namespace OmniControl.Core.Engine.Resources;
 
 /// One of Windows' performance counters with every instance (<c>\Set(*)\Counter</c>, by its English path so a translated Windows works too),
-/// in a query of its own. A rate counter has values from its second <see cref="Read"/> on; an instance without a value now is left out.
-internal sealed class PdhCounter : IDisposable
+/// in a query of its own. A rate counter has values from its second read on; an instance without a value now is left out.
+/// Reuses one native buffer across reads and exposes instance names as <see cref="ReadOnlySpan{T}"/> to avoid per-tick allocations.
+internal sealed unsafe class PdhCounter : IDisposable
 {
-    private IntPtr _query, _counter;
+    public delegate void SampleVisitor(ReadOnlySpan<char> instance, double value);
+
+    private IntPtr _query, _counter, _buffer;
+    private uint _bufferSize;
 
     private PdhCounter(IntPtr query, IntPtr counter) => (_query, _counter) = (query, counter);
 
@@ -19,34 +23,44 @@ internal sealed class PdhCounter : IDisposable
         return null;
     }
 
-    /// Takes a new look and gives every instance's value; empty when Windows gave none now.
-    public IReadOnlyList<(string Instance, double Value)> Read()
+    /// Takes a new look and passes each valid instance name and value to <paramref name="visit"/> without allocating managed strings or native buffers per call.
+    public void ReadEach(SampleVisitor visit)
     {
-        if (_query == IntPtr.Zero || PdhCollectQueryData(_query) != Ok) return Array.Empty<(string, double)>();
+        if (_query == IntPtr.Zero || PdhCollectQueryData(_query) != Ok) return;
         const uint format = FormatDouble | FormatNoCap100;
-        uint size = 0;
-        if (PdhGetFormattedCounterArray(_counter, format, ref size, out _, IntPtr.Zero) != MoreData || size == 0) return Array.Empty<(string, double)>();
-        var buffer = Marshal.AllocHGlobal((int)size);
-        try
+        var size = _bufferSize;
+        uint count = 0;
+        var status = _buffer != IntPtr.Zero
+            ? PdhGetFormattedCounterArray(_counter, format, ref size, out count, _buffer)
+            : MoreData;
+        if (status == MoreData)
         {
-            if (PdhGetFormattedCounterArray(_counter, format, ref size, out var count, buffer) != Ok) return Array.Empty<(string, double)>();
-            var values = new List<(string, double)>((int)count);
-            var stride = Marshal.SizeOf<Item>();
-            for (var i = 0; i < count; i++)
-            {
-                var item = Marshal.PtrToStructure<Item>(buffer + i * stride);
-                if (item.Status is ValidData or NewData && Marshal.PtrToStringUni(item.Name) is { } name) values.Add((name, item.Value));
-            }
-            return values;
+            if (size == 0 && PdhGetFormattedCounterArray(_counter, format, ref size, out _, IntPtr.Zero) != MoreData) return;
+            if (size == 0) return;
+            if (_buffer != IntPtr.Zero) Marshal.FreeHGlobal(_buffer);
+            _buffer = Marshal.AllocHGlobal((int)size);
+            _bufferSize = size;
+            status = PdhGetFormattedCounterArray(_counter, format, ref size, out count, _buffer);
         }
-        finally
+        else if (status != Ok) return;
+        if (status != Ok) return;
+
+        var items = (Item*)_buffer;
+        for (uint i = 0; i < count; i++)
         {
-            Marshal.FreeHGlobal(buffer);
+            var item = items[i];
+            if (item.Status is ValidData or NewData && item.Name != IntPtr.Zero)
+                visit(MemoryMarshal.CreateReadOnlySpanFromNullTerminated((char*)item.Name), item.Value);
         }
     }
 
     public void Dispose()
     {
+        if (_buffer != IntPtr.Zero)
+        {
+            Marshal.FreeHGlobal(_buffer);
+            (_buffer, _bufferSize) = (IntPtr.Zero, 0);
+        }
         if (_query == IntPtr.Zero) return;
         PdhCloseQuery(_query);
         (_query, _counter) = (IntPtr.Zero, IntPtr.Zero);

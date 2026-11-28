@@ -16,7 +16,7 @@ public static partial class Timing
     public const int BatteryLowPercent = 20;
 
     /// How often the clock check samples (a gap of <see cref="PowerClockGap"/> is a stop, so a slow sample costs nothing in what is found).
-    public static readonly TimeSpan PowerClockTick = TimeSpan.FromSeconds(10);
+    public static readonly TimeSpan PowerClockTick = TimeSpan.FromSeconds(30);
 
     /// A clock sample this much later than asked means the program was stopped (the PC slept, or Modern Standby froze it): one piece of wake evidence.
     public static readonly TimeSpan PowerClockGap = TimeSpan.FromSeconds(20);

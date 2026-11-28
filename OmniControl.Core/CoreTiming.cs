@@ -28,7 +28,7 @@ public static class CoreTiming
     public const int AutoscrollWatchMs = 60, AutoscrollCachePx = 8, AutoscrollCacheMs = 1500;
 
     /// The autoscroll worker goes back to sleep (until the hook sees the pointer move) after this many looks with the pointer still.
-    public const int AutoscrollRestLooks = 10;
+    public const int AutoscrollRestLooks = 4;
 
     /// A meter of the default playback or recording device is opened again this often, so a changed default device is followed.
     public const long DefaultMeterRefreshMs = 1500;
@@ -71,7 +71,7 @@ public static class CoreTiming
 
     /// The mouse hook's watchdog looks this often whether Windows has silently dropped the hook (pointer moved and input happened, yet
     /// the hook saw nothing), and puts it back when it has.
-    public const int HookWatchdogMs = 3000;
+    public const int HookWatchdogMs = 10_000;
 
     /// Most diagnostic lines the mouse hook writes per run.
     public const int HookLogLimit = 150;

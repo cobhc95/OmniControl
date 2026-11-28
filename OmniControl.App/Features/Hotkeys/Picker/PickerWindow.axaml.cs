@@ -20,9 +20,6 @@ public partial class PickerWindow : Window
     /// Gives every picker window the keys part (once, at start-up).
     internal static void UseKeys(ManageMode keys) => _keys ??= keys;
 
-    /// Makes the window's panes once, unseen, after start-up, so the first opening does not wait for their layout code to load.
-    internal static void Warm() => _ = new PickerMenu();
-
     public PickerWindow()
     {
         InitializeComponent();

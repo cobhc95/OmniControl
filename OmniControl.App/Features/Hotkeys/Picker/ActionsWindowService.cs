@@ -57,7 +57,6 @@ public sealed class ActionsWindowService : IDisposable
         ClearAllCommand = new AsyncRelayCommand(ClearAllAsync);
         registry.BindingsSaved += OnBindingsSaved;
         PickerWindow.UseKeys(Keys);
-        DrawFirst.ThenWire(PickerWindow.Warm);
     }
 
     private static Func<string, string?> DefaultKeyFrom(IReadOnlyDictionary<string, StoredHotkey> defaults) =>

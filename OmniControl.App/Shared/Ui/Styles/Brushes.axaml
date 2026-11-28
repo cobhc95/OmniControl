@@ -106,6 +106,8 @@
             <StreamGeometry x:Key="ShotPrintIcon">M7,9 V4 H17 V9 M7,17 H4 V10 H20 V17 H17 M7,14 H17 V20 H7 Z</StreamGeometry>
             <StreamGeometry x:Key="ShotCopyIcon">M8,8 H19 V20 H8 Z M5,16 V4 H16</StreamGeometry>
             <StreamGeometry x:Key="ShotSaveIcon">M12,4 V15 M7,10 L12,15 L17,10 M5,19 H19</StreamGeometry>
+            <StreamGeometry x:Key="ShotMagnetIcon">M5,4 V12 A7,7 0 0 0 19,12 V4 H15 V12 A3,3 0 0 1 9,12 V4 Z M5,8 H9 M15,8 H19</StreamGeometry>
+            <StreamGeometry x:Key="ShotMagnetOffIcon">M5,4 V12 A7,7 0 0 0 19,12 V4 H15 V12 A3,3 0 0 1 9,12 V4 Z M5,8 H9 M15,8 H19 M3,3 L21,21</StreamGeometry>
             <StreamGeometry x:Key="ShotBiggerIcon">M3,19 L8.5,5 L14,19 M5.2,14 H11.8 M15,12 H22 M18.5,8.5 V15.5</StreamGeometry>
             <StreamGeometry x:Key="ShotSmallerIcon">M3,19 L8.5,5 L14,19 M5.2,14 H11.8 M15,12 H22</StreamGeometry>
             <!-- Screen recording (Record and Stop are filled red by Button.toolicon.danger) -->

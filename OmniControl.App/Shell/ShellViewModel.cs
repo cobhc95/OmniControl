@@ -118,7 +118,7 @@ public sealed partial class ShellViewModel : ObservableObject, IDisposable
             _settings.Slot(s => s.FeaturesFromSetup, (s, chosen) => s.FeaturesFromSetup = chosen));
         _input = new InputModule(_volume.RememberedPrograms); // its pointer settings put back a button swap a crashed run left on trial
         _apps = new AppsModule(_dialogs.AskAsync, Report);
-        _osd = new OsdModule(() => _apps.ListedPrograms());
+        _osd = new OsdModule(() => _apps.ListedPrograms(), _settings.GpuDrawing);
         _hotkeys = new HotkeyRegistry(_hardware, Report, new OmniActionSettings(), () => _states, _actionGate);
         _states = new StateRegistry(chainNow: () => _hotkeys.Chain);
         _icons = new IconStore(_hotkeys);
@@ -231,6 +231,8 @@ public sealed partial class ShellViewModel : ObservableObject, IDisposable
             ArmRelease();
             return;
         }
+        foreach (var slot in AllSlots) slot.IfMade?.OnWindowReleased();
+        (_pageIndex, _wordIndex, _entryIndex, _wordHitsFor, _wordHits) = (null, null, null, default, new());
         DispatcherTimer.RunOnce(() => CompactAfterRelease(before), Timing.UiReleaseCompactAfter);
     }
 
@@ -245,9 +247,20 @@ public sealed partial class ShellViewModel : ObservableObject, IDisposable
     private void CompactAfterRelease(string before)
     {
         if (_windowShown) return;
-        var collected = TryCompact(ProcessPower.CompactAfterRelease);
-        UiTiming.Memory(collected ? "windows let go and collected" : "windows let go (sound running, not collected)", $"before the release {before}");
-        if (collected) DispatcherTimer.RunOnce(TrimAfterRelease, Timing.UiReleaseTrimAfter);
+        if (SoundRuns)
+        {
+            UiTiming.Memory("windows let go (sound running, not collected)", $"before the release {before}");
+            return;
+        }
+        Guard.OffUi("Give memory back after release", () =>
+        {
+            ProcessPower.CompactAfterRelease();
+            Dispatcher.UIThread.Post(() =>
+            {
+                UiTiming.Memory("windows let go and collected", $"before the release {before}");
+                if (!_windowShown) DispatcherTimer.RunOnce(TrimAfterRelease, Timing.UiReleaseTrimAfter);
+            });
+        });
     }
 
     /// The background collection has had time: Windows is asked to take back the idle pages (same sound guard as <see cref="TryCompact"/>; not
@@ -360,10 +373,13 @@ public sealed partial class ShellViewModel : ObservableObject, IDisposable
         if (page != CurrentPage) return; // another page was opened before this one was wired
         _wired = page;
         page.OnShown();
-        page.Restorer?.Refresh();
+        RefreshRestore();
         if (_windowShown) page.OnOnScreenChanged(true);
         UiTiming.Write($"Page {page.Title}: wired {clock.ElapsedMilliseconds} ms");
     }
+
+    /// Raised when the main window comes on screen (true) or hides/minimises (false).
+    public event Action<bool>? WindowShownChanged;
 
     /// The main window was shown, hidden, minimised or restored: the open page comes on or goes off screen with it. The release waits only
     /// while it is <paramref name="hidden"/> (a minimised window keeps its taskbar button, so it is never let go), counted from the hide.
@@ -373,9 +389,9 @@ public sealed partial class ShellViewModel : ObservableObject, IDisposable
         else if (!_releaseUi.IsEnabled) ArmRelease();
         if (shown == _windowShown) return;
         _windowShown = shown;
+        WindowShownChanged?.Invoke(shown);
         _hiddenSettle.IsEnabled = !shown;
         FollowRestoreCheck(shown);
-        if (shown) _apps.Refresh();
         if (shown && _openSlot is null && (SelectedMainPage ?? SelectedFooterPage) is { } first) Show(first);
         _wired?.OnOnScreenChanged(shown); // a page not wired yet comes on screen when it is
         foreach (var slot in _allPages) slot.IfMade?.OnWindowShownChanged(shown);

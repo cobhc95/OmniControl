@@ -100,8 +100,8 @@ public static partial class Timing
     /// How long a "Restore defaults" line without an Undo ("Already at the defaults.") stays.
     public static readonly TimeSpan RestoreNote = TimeSpan.FromSeconds(6);
 
-    /// How often the open page's "Restore defaults" button looks again at whether the page is at its defaults.
-    public static readonly TimeSpan RestoreStateCheck = TimeSpan.FromSeconds(1);
+    /// How long after a setting or state change the open page's "Restore defaults" button re-checks whether the page is at its defaults.
+    public static readonly TimeSpan RestoreStateCheck = TimeSpan.FromMilliseconds(350);
 
     /// How long a restarted OmniControl waits for the run before it to end (it saves its settings as it closes) before it carries out a staged import or wipe.
     public static readonly TimeSpan RestartWait = TimeSpan.FromSeconds(15);

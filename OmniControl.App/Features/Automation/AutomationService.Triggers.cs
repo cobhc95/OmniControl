@@ -38,10 +38,14 @@ public sealed partial class AutomationService
     {
         _lastLook = DateTime.Now;
         _power.Woke += OnWoke;
+        _watcher.EventQueued += OnWatcherEvent;
+        _states.WatchedChanged += SyncTriggers;
         _tick = new DispatcherTimer(Timing.AutomationTick, DispatcherPriority.Background, (_, _) => Look());
-        _tick.Start();
         SyncTriggers();
+        if (_pending.Count > 0) Dispatcher.UIThread.Post(Look, DispatcherPriority.Background);
     }
+
+    private void OnWatcherEvent() => Dispatcher.UIThread.Post(Look, DispatcherPriority.Background);
 
     /// The hardware watch "USB devices (rules)": Windows announced a device change and the burst has settled (worker thread).
     internal void LookAtUsb() => _watcher.LookAtUsb();
@@ -52,28 +56,39 @@ public sealed partial class AutomationService
         Log("the PC woke (confirmed by the power journal)");
         _guard.Woke();
         _pending.Add(new AutomationEvent(AutomationTriggers.Resume));
+        Look();
     });
 
     private void StopTriggers()
     {
         _power.Woke -= OnWoke;
+        _watcher.EventQueued -= OnWatcherEvent;
+        _states.WatchedChanged -= SyncTriggers;
         _tick?.Stop();
         _watcher.Dispose();
         _wake.Dispose();
     }
 
-    /// The set of rules changed: watch devices once a rule wants them, and set the wake timer.
+    /// True when a rule has a trigger that requires clock polling (time of day, time window, repeating/one-shot timer);
+    /// state, action, mouse-button, USB, login and wake triggers are event-driven and need no timer.
+    private static bool NeedsClock(AutomationRule rule) =>
+        Watched(rule).Any(t => MouseAction.Parse(t).Id is AutomationTriggers.Time or AutomationTriggers.Between or AutomationTriggers.Timer);
+
+    /// The set of rules changed: watch devices once a rule wants them, and run the clock tick only when a polled trigger or watched power/idle state needs it.
     private void SyncTriggers()
     {
         SyncPrograms();
         if (SessionOff) return;
         ShareWatched();
-        // With no rule to look for, the look only keeps the power states fresh: much less often, and not at all while only rules of other pages may run.
-        var busy = Settings.Rules.Any(r => Watches(r) || (AsksPrograms(r) && !Stopped(r)));
+        var needsClock = _programs.Watching
+            || Settings.Rules.Any(r => (Watches(r) && NeedsClock(r)) || (AsksPrograms(r) && !Stopped(r)))
+            || _states.IsWatched(AutomationTriggers.IdleStateId)
+            || PowerStates.Ids.Any(_states.IsWatched)
+            || ValuesShown is not null;
         if (_tick is not null)
         {
-            _tick.Interval = busy ? Timing.AutomationTick : Timing.AutomationIdleTick;
-            _tick.IsEnabled = busy || UserRules;
+            _tick.Interval = Timing.AutomationTick;
+            _tick.IsEnabled = needsClock;
         }
         LookAtHeld();
         UpdateWake();
@@ -118,7 +133,7 @@ public sealed partial class AutomationService
                     _programsSeen = programs;
                     _programs.Saw(programs);
                 }
-                if (_tick?.IsEnabled == true) Guard.Run("Automation look", LookWith);
+                if (_tick?.IsEnabled == true || _pending.Count > 0) Guard.Run("Automation look", LookWith);
             });
         });
     }

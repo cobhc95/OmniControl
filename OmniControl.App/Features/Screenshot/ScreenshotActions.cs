@@ -25,7 +25,7 @@ public static class ScreenshotActions
         var service = new ScreenshotService(settings, report, message => osd.ShowMessage(ScreenshotService.OsdElement, message), hevc, ask);
         hotkeys.Register(new[]
         {
-            Make("screenshot.area", "Screenshot: area (edit)", ShotKind.Area, $"{Words} region select draw annotate lightshot", service, settings, hevc, windowsKeys),
+            Make("screenshot.area", "Screenshot: area (edit)", ShotKind.Area, $"{Words} region select draw annotate lightshot snap magnet window edges pick", service, settings, hevc, windowsKeys),
             Make("screenshot.window", "Screenshot: active window", ShotKind.Window, $"{Words} window app", service, settings, hevc, windowsKeys),
             Make("screenshot.screen", "Screenshot: full screen", ShotKind.Screen, $"{Words} monitor display under pointer", service, settings, hevc, windowsKeys),
             Make("screenshot.all", "Screenshot: all screens", ShotKind.AllScreens, $"{Words} every monitor desktop", service, settings, hevc, windowsKeys),

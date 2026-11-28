@@ -21,6 +21,7 @@ public sealed class OsdService : IOsd, IDisposable
     private readonly DispatcherTimer _hide = new();
     // Which program caused a pop-up, where that is known (the duration's per-app exceptions).
     private readonly ProgramIdentity _programs = new();
+    private readonly bool _keepWarmEnabled;
     private readonly DispatcherTimer _keepWarm = new() { Interval = Timing.OsdKeepWarm };
     private readonly WindowsOsd _windowsOsd = new();
     // Brightness and USB are watched only while the OSD and that element are on (SyncWatchers); the brightness watcher is made each time.
@@ -114,8 +115,10 @@ public sealed class OsdService : IOsd, IDisposable
     // A level shown under a name nobody declared gets the neutral disc, never another feature's picture.
     private OsdLevelIcon IconOf(string element) => _elements.FirstOrDefault(e => e.Name == element)?.Icon ?? OsdLevelIcon.Disc;
 
-    public OsdService()
+    /// <param name="keepWarm">True when GPU drawing (ANGLE/D3D) is active and parked pop-ups need periodic redraws to keep the graphics pipeline warm; software rendering needs none.</param>
+    public OsdService(bool keepWarm = false)
     {
+        _keepWarmEnabled = keepWarm;
         _showQueued = ShowQueued;
         Places = new OsdPlaces(Settings, SaveQuietly);
         Durations = new OsdDurations(Settings, SaveQuietly);
@@ -163,7 +166,7 @@ public sealed class OsdService : IOsd, IDisposable
         if (Active)
         {
             Prepare();
-            _keepWarm.Start();
+            if (_keepWarmEnabled) _keepWarm.Start();
             return;
         }
         _keepWarm.Stop();

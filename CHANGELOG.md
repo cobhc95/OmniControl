@@ -3,7 +3,25 @@
 Versions go 0.1.0, 0.1.1 ... 0.1.9, then 0.2.0. Each release is a full GitHub release with a Setup, a Portable download and checksums.
 New entries go under "Unreleased" as work lands; a release moves them under its version.
 
-## Unreleased (0.3.7)
+## 0.3.7 (28 Nov 2026)
+
+### ✨ New
+
+- **Screenshot: snap to windows.** While you draw, move or resize the area selection, its edges snap to the window borders behind it, the taskbar and the screen edges. Only edges you can see in the picture count, and a dashed guide shows the edge it snapped to. Hold Alt to drag freely.
+- **Screenshot: click to pick a window.** Before you draw a selection, the window under the pointer lights up with its name and size; one click selects it. Tab and Shift+Tab step through the windows and Enter picks one.
+- **Screenshot: magnet button.** A new magnet next to Close in the overlay's action bar (or the M key) turns snapping and window picking on or off. The choice is kept, and it is also "Snap to windows" in the area and Record area settings.
+
+### ⚡ Lighter and faster
+
+- **Lower RAM in tray and after closing:** Enabled background concurrent GC (`ConcurrentGarbageCollection`), compacted the managed heap and Skia caches off the UI thread when releasing the closed window, cleared `PageHost`, `MainWindow.DataContext`, cached process icons and search indices on release, and lazy-loaded the 545 icon-picker glyphs from `Assets/icons.txt` with weak geometry caching instead of keeping all 545 compiled in `Application.Resources`.
+- **Fewer idle wakeups and background threads:** Disabled the 30 s OSD keep-warm redraw in default software rendering mode (kept on only when GPU drawing is enabled; OSD windows stay parked off-screen so scroll gestures remain instant), stopped `AutomationService` from polling every 5 s when no active rule or open picker needs a clock, merged Automation's emergency hotkey onto the single `HotkeyService` thread, removed `WarmLightScheduler`'s 30 s periodic timer, replaced `UiWatchdog` and `MouseHook`'s dedicated idle threads with timers (pausing `UiWatchdog` while minimised to tray), and scoped `FullScreenWatcher`'s move/resize hook to the foreground window only.
+- **Lighter while open:** Replaced the 1-second Restore defaults JSON/pointer poll with an event-driven refresh on settings/state/hotkey changes, skipped redundant startup/window-show pre-warm work (`PickerWindow.Warm`, redundant app-list scans, and activating close mixer scans during hidden tray-panel warm-up), reduced `AutoscrollWatcher` cross-process UIA queries while moving the mouse quickly or over links, and made Windows performance-counter reads (`PdhCounter` / `WindowsSensors`) reuse a single native buffer with span-based instance parsing.
+
+### 🛠 Fixed
+
+- **Night light (Displays & Tray):** Turning Night light on or off from the tray panel, Displays page, or a hotkey now applies or removes the warm tint straight away regardless of the schedule window. Redesigned the Night light panel into a compact **Night light** section with paired **Night light** toggle + **Temperature** slider and a separate **Schedule night light** toggle that reveals **Turn on at** / **Turn off at** pickers and automatically flicks the Night light switch at those times; both **Night light** and **Schedule night light** are registered as live states and Toggle/On/Off actions.
+- **Appearance:** Changed the default **Accent intensity** from `85` to `75` (slider default mark, double-click reset, new installs, and Restore defaults).
+- **Audio and Volume:** Released CoreAudio session COM objects on refresh and exit, stopped unchanged 2-second mixer scans from re-running `EffectsEngine.Reconcile` and re-reading Equalizer APO config files, and stopped live microphone capture streams and the 16 fps meter timer when switching to Easy view or the Wiring tab.
 
 ## 0.3.6 (26 Nov 2026)
 

@@ -11,6 +11,9 @@ namespace OmniControl.App.Shared.Services;
 /// <see cref="FlushSaves"/> (exit, backup, import) write or drop the waiting text first, so nothing reads an older file or overwrites a newer one.
 public static class AppDataStore
 {
+    /// Raised (on the caller's thread) whenever any settings store is queued to save, written, or deleted.
+    public static event Action? Changed;
+
     /// Settable only by the test assembly (internal), so tests never write into the real app data.
     public static string Folder { get; internal set; } = AppDataLocation.Default;
 
@@ -102,6 +105,7 @@ public static class AppDataStore
             : new Waiting(store, null, () => JsonSerializer.Serialize(value), owner);
         lock (PendingGate) Pending[store.FileName] = waiting;
         PendingDue.Change(Timing.SaveSoonDelay, Timeout.InfiniteTimeSpan);
+        Changed?.Invoke();
     }
 
     /// Due: each owner makes its waiting texts on its own thread, then a worker writes them; texts already made are written now.
@@ -183,21 +187,27 @@ public static class AppDataStore
     /// Saves the text atomically now (a waiting older save of the store is dropped); false (and a line in the log) when the folder could not be written.
     public static bool SaveText(DataStore store, string text)
     {
+        bool ok;
         lock (WriteGate)
         {
             TakePending(store);
-            return Write(store, text);
+            ok = Write(store, text);
         }
+        if (ok) Changed?.Invoke();
+        return ok;
     }
 
     /// Removes a file (and a waiting save of it); false when it could not be removed (logged), so a caller that must be sure can retry.
     public static bool Delete(DataStore store)
     {
+        bool ok;
         lock (WriteGate)
         {
             TakePending(store);
-            return TryDelete(PathOf(store.FileName));
+            ok = TryDelete(PathOf(store.FileName));
         }
+        if (ok) Changed?.Invoke();
+        return ok;
     }
 
     /// Takes the waiting save of <paramref name="store"/> out of the queue (call inside the write gate).

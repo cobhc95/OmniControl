@@ -9,36 +9,56 @@ public static partial class CoreAudio
     // ---- sessions ----
 
     /// Every open audio session on every playback device (the system-sounds session is left out).
+    /// Releases all temporary enumerator/device/manager/skipped COM objects immediately; the caller owns and disposes the returned sessions.
     public static IReadOnlyList<AudioSession> Sessions()
     {
         var result = new List<AudioSession>();
+        IMMDeviceEnumerator? e = null;
         try
         {
-            var e = NewEnumerator();
+            e = NewEnumerator();
             var iid = typeof(IAudioSessionManager2).GUID;
             foreach (var d in ActiveDevices(e))
             {
+                object? manager = null;
+                IAudioSessionEnumerator? list = null;
                 try
                 {
-                    if (d.Activate(ref iid, ClsCtxAll, IntPtr.Zero, out var o) != 0 || o is not IAudioSessionManager2 mgr) continue;
-                    if (mgr.GetSessionEnumerator(out var list) != 0) continue;
+                    if (d.Activate(ref iid, ClsCtxAll, IntPtr.Zero, out manager) != 0 || manager is not IAudioSessionManager2 mgr) continue;
+                    if (mgr.GetSessionEnumerator(out list) != 0) continue;
                     list.GetCount(out var count);
                     var deviceId = DeviceId(d);
                     for (var i = 0; i < count; i++)
                     {
                         if (list.GetSession(i, out var ctl) != 0) continue;
-                        if (ctl is not IAudioSessionControl2 c2 || ctl is not ISimpleAudioVolume vol) continue;
-                        if (c2.IsSystemSoundsSession() == 0) continue;
-                        c2.GetProcessId(out var pid);
-                        c2.GetState(out var state);
-                        if (pid == 0 || state == 2) continue;
-                        result.Add(new AudioSession((int)pid, deviceId, state, c2, vol, ctl as IChannelAudioVolume, ctl as IAudioMeterInformation));
+                        var kept = false;
+                        try
+                        {
+                            if (ctl is not IAudioSessionControl2 c2 || ctl is not ISimpleAudioVolume vol) continue;
+                            if (c2.IsSystemSoundsSession() == 0) continue;
+                            c2.GetProcessId(out var pid);
+                            c2.GetState(out var state);
+                            if (pid == 0 || state == 2) continue;
+                            result.Add(new AudioSession((int)pid, deviceId, state, c2, vol, ctl as IChannelAudioVolume, ctl as IAudioMeterInformation));
+                            kept = true;
+                        }
+                        finally
+                        {
+                            if (!kept) ReleaseCom(ctl);
+                        }
                     }
                 }
                 catch (Exception ex) when (ex is COMException or InvalidCastException) { /* skip a device that misbehaves */ }
+                finally
+                {
+                    ReleaseCom(list);
+                    ReleaseCom(manager);
+                    ReleaseCom(d);
+                }
             }
         }
         catch (Exception ex) when (ex is COMException or InvalidCastException) { /* no audio service */ }
+        finally { ReleaseCom(e); }
         return result;
     }
 

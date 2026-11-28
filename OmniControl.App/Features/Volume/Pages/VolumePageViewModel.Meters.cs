@@ -30,18 +30,22 @@ public sealed partial class VolumePageViewModel
     private void SyncLive()
     {
         var live = _viewAttached && _onScreen;
-        if (live == _meterTimer.IsEnabled) return;
-        if (live)
+        if (live && _closeWatch is null) _closeWatch = _mixer.WatchClosely();
+        else if (!live && _closeWatch is not null)
         {
-            _closeWatch = _mixer.WatchClosely();
+            _closeWatch.Dispose();
+            _closeWatch = null;
+        }
+        var meters = live && ShowsMixer && !IsEasy;
+        if (meters == _meterTimer.IsEnabled) return;
+        if (meters)
+        {
             _meterTimer.Start();
             return;
         }
         _meterTimer.Stop();
         _captures.Keep(Array.Empty<string>());
         foreach (var row in AllRows()) row.Meter.Clear();
-        _closeWatch?.Dispose();
-        _closeWatch = null;
     }
 
     private void FeedMeters()

@@ -25,6 +25,8 @@ internal sealed unsafe class WindowsSensors : IDisposable
     private PdhCounter? _gpu, _disks, _zones;
     private bool _gpuTried, _disksTried, _zonesTried;
     private IReadOnlyList<PhysicalDisk>? _diskList;
+    private readonly List<(string Engine, double Sum)> _gpuEngines = new();
+    private readonly Dictionary<string, double> _gpuEngineLuids = new(StringComparer.Ordinal);
 
     /// Each graphics adapter's load in percent as Task Manager gives it (its busiest engine, every program added up), by its LUID
     /// (<see cref="GraphicsAdapter.Luid"/>); null when Windows has no graphics engine counters (no WDDM driver).
@@ -32,33 +34,54 @@ internal sealed unsafe class WindowsSensors : IDisposable
     {
         if (Counter(ref _gpu, ref _gpuTried, @"\GPU Engine(*)\Utilization Percentage") is not { } counter) return null;
         // An instance is one program on one engine: "pid_1234_luid_0x00000000_0x0000D1F2_phys_0_eng_3_engtype_3D"; an engine is the part from "luid".
-        var engines = new Dictionary<string, double>();
-        foreach (var (instance, value) in counter.Read())
+        _gpuEngines.Clear();
+        counter.ReadEach((instance, value) =>
         {
-            var at = instance.IndexOf("luid_0x", StringComparison.Ordinal);
-            if (at < 0 || instance.Length < at + LuidTextLength) continue;
+            if (value <= 0) return;
+            var at = instance.IndexOf("luid_0x".AsSpan(), StringComparison.Ordinal);
+            if (at < 0 || instance.Length < at + LuidTextLength) return;
             var engine = instance[at..];
-            engines[engine] = engines.GetValueOrDefault(engine) + value;
+            for (var i = 0; i < _gpuEngines.Count; i++)
+            {
+                if (engine.SequenceEqual(_gpuEngines[i].Engine.AsSpan()))
+                {
+                    _gpuEngines[i] = (_gpuEngines[i].Engine, _gpuEngines[i].Sum + value);
+                    return;
+                }
+            }
+            _gpuEngines.Add((engine.ToString(), value));
+        });
+        _gpuEngineLuids.Clear();
+        foreach (var (engine, sum) in _gpuEngines)
+        {
+            var luid = LuidOf(engine);
+            var clamped = Math.Clamp(sum, 0, 100);
+            if (!_gpuEngineLuids.TryGetValue(luid, out var best) || clamped > best) _gpuEngineLuids[luid] = clamped;
         }
-        return engines.GroupBy(e => LuidOf(e.Key)).ToDictionary(g => g.Key, g => Math.Clamp(g.Max(e => e.Value), 0, 100));
+        return new Dictionary<string, double>(_gpuEngineLuids, StringComparer.Ordinal);
     }
 
     /// "luid_0x" + 8 hex + "_0x" + 8 hex.
     private const int LuidTextLength = 7 + 8 + 3 + 8;
 
     /// The LUID of a "luid_0x00000000_0x0000D1F2…" engine as <see cref="GraphicsAdapter.Luid"/> writes it.
-    private static string LuidOf(string engine) => (engine.Substring(7, 8) + engine.Substring(18, 8)).ToLowerInvariant();
+    private static string LuidOf(string engine) => string.Create(16, engine, static (dst, src) =>
+    {
+        for (var i = 0; i < 8; i++) dst[i] = char.ToLowerInvariant(src[7 + i]);
+        for (var i = 0; i < 8; i++) dst[8 + i] = char.ToLowerInvariant(src[18 + i]);
+    });
+
     /// Each physical disk's active time in percent (100 minus its idle time), by Windows' disk number; null when Windows has no disk counters.
     public IReadOnlyDictionary<int, double>? DiskActivity()
     {
         if (Counter(ref _disks, ref _disksTried, @"\PhysicalDisk(*)\% Idle Time") is not { } counter) return null;
         var activity = new Dictionary<int, double>();
-        foreach (var (instance, idle) in counter.Read())
+        counter.ReadEach((instance, idle) =>
         {
             // "0 C:", "1 D: E:" (the disk number first); "_Total" is left out.
             var space = instance.IndexOf(' ');
             if (int.TryParse(space < 0 ? instance : instance[..space], out var number)) activity[number] = Math.Clamp(100 - idle, 0, 100);
-        }
+        });
         return activity;
     }
 
@@ -84,13 +107,14 @@ internal sealed unsafe class WindowsSensors : IDisposable
             _zones ??= PdhCounter.Open(@"\Thermal Zone Information(*)\Temperature");
         }
         if (_zones is null) return sensors;
-        foreach (var (instance, value) in _zones.Read())
+        _zones.ReadEach((instance, value) =>
         {
             var celsius = (_precise ? value / 10 : value) - Kelvin;
-            if (celsius is <= 0 or >= HottestMax) continue;
-            var name = instance.StartsWith(@"\_TZ.", StringComparison.Ordinal) ? instance[5..] : instance;
+            if (celsius is <= 0 or >= HottestMax) return;
+            var trimmed = instance.StartsWith(@"\_TZ.".AsSpan(), StringComparison.Ordinal) ? instance[5..] : instance;
+            var name = trimmed.ToString();
             sensors.Add(new TemperatureSensor(ZoneIds + name, $"Thermal zone {name}", "ACPI", SensorGroup.Board, celsius));
-        }
+        });
         return sensors;
     }
 

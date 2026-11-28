@@ -27,6 +27,13 @@ public sealed class ProcessIcons
 
     private static ScreenImage? Read(string exePath) => File.Exists(exePath) ? ProgramFile.IconOf(exePath) : null;
 
+    /// Drops the cached bitmaps (called when the main window is released so they can be collected; a row still showing one keeps its own reference).
+    public void Clear()
+    {
+        _cache.Clear();
+        _order.Clear();
+    }
+
     private Bitmap? Keep(string exePath, ScreenImage? icon)
     {
         var result = icon is null ? null : ToBitmap(icon);

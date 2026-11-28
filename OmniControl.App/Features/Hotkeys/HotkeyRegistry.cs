@@ -10,6 +10,7 @@ public sealed partial class HotkeyRegistry : IActionRegistry, IActionRunner, IDi
     private static readonly DataStore Store = DataStores.Hotkeys;
 
     private readonly HotkeyService _service = new();
+    private readonly Dictionary<string, (string Gesture, Action Run, Action<string>? Failed)> _pinned = new();
     private readonly IHardwareWatches _hardware;
     private readonly Dictionary<string, StoredHotkey> _stored = Load();
     private readonly bool _fresh; // nothing was saved before this run: a first start
@@ -90,6 +91,11 @@ public sealed partial class HotkeyRegistry : IActionRegistry, IActionRunner, IDi
         _fresh = _stored.Count == 0;
         _service.Failed += gesture => Dispatcher.UIThread.Post(() =>
         {
+            if (_pinned.Values.FirstOrDefault(p => p.Gesture == gesture) is { Failed: { } fail })
+            {
+                fail(gesture);
+                return;
+            }
             var names = string.Join(", ", Actions.Where(a => a.Keys.Contains(gesture)).Select(a => a.Title));
             _report($"Couldn't register {gesture} for {names}: another app is probably using it. Try another combination.");
         });
@@ -413,8 +419,20 @@ public sealed partial class HotkeyRegistry : IActionRegistry, IActionRunner, IDi
         Rebind();
     }
 
+    public void PinKey(string id, string? gesture, Action? run, Action<string>? failed = null)
+    {
+        if (string.IsNullOrEmpty(gesture) || run is null)
+        {
+            if (!_pinned.Remove(id)) return;
+        }
+        else _pinned[id] = (gesture, run, failed);
+        Rebind();
+    }
+
     private void Rebind() =>
-        _service.Apply(Actions.Where(a => !_stopped && (!(_held || _paused) || a.NeverBlock)).SelectMany(a => a.Keys.Where(k => ReservedKeys.ProblemWith(k) is null).Select(k => (k, (Action)(() => RunSoon(a))))));
+        _service.Apply(Actions.Where(a => !_stopped && (!(_held || _paused) || a.NeverBlock))
+            .SelectMany(a => a.Keys.Where(k => ReservedKeys.ProblemWith(k) is null).Select(k => (k, (Action)(() => RunSoon(a)))))
+            .Concat(_pinned.Values.Select(p => (p.Gesture, p.Run))));
 
     private static Dictionary<string, StoredHotkey> Load() =>
         Unique(AppDataStore.Load<Dictionary<string, StoredHotkey>>(Store) ?? new());

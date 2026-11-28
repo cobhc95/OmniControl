@@ -26,12 +26,13 @@ public static class PanMath
 }
 
 /// One audio session (a program's stream on one device). Volume, mute and pan are per session.
-public sealed class AudioSession
+public sealed class AudioSession : IDisposable
 {
     private readonly CoreAudio.ISimpleAudioVolume _volume;
     private readonly CoreAudio.IChannelAudioVolume? _channels;
     private readonly CoreAudio.IAudioMeterInformation? _meter;
     private readonly CoreAudio.IAudioSessionControl2 _control;
+    private bool _disposed;
 
     internal AudioSession(int pid, string deviceId, int state, CoreAudio.IAudioSessionControl2 control, CoreAudio.ISimpleAudioVolume volume,
         CoreAudio.IChannelAudioVolume? channels, CoreAudio.IAudioMeterInformation? meter)
@@ -86,5 +87,13 @@ public sealed class AudioSession
         PanMath.ToLevels(pan, out var l, out var r);
         _channels.SetChannelVolume(0, l, ref _ctx);
         _channels.SetChannelVolume(1, r, ref _ctx);
+    }
+
+    public void Dispose()
+    {
+        if (_disposed) return;
+        _disposed = true;
+        // All four interfaces are queried from the same underlying COM RCW, so releasing _control releases the session RCW once.
+        CoreAudio.ReleaseCom(_control);
     }
 }

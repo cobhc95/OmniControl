@@ -131,12 +131,11 @@ public partial class TrayFlyoutWindow : Window
     /// Builds the window's visuals once, unseen, so the first click only shows it.
     public void Warm()
     {
-        Model?.Showing();
+        Model?.Warm();
         (Opacity, ShowActivated) = (0, false);
         Show();
         Hide();
         (Opacity, ShowActivated) = (1, true);
-        Model?.Hidden();
     }
 
     /// Hides it as a click elsewhere does.

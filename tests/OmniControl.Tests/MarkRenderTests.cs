@@ -50,7 +50,8 @@ public class MarkRenderTests
     private static CaptureOverlayViewModel Model(bool stripes = false)
     {
         var model = new CaptureOverlayViewModel(ImageBitmaps.ToBitmap(Picture(stripes)), new ScreenRect(0, 0, Size, Size), new NoOutput(), () => { }, false,
-            new ToolSizes(new Dictionary<string, double>(), () => { })) { Scale = 1 };
+            new ToolSizes(new Dictionary<string, double>(), () => { }), new WindowSnap(DesktopLayout.Empty),
+            new SnapChoice(new ScreenshotOptions { SnapToWindows = false }, () => { })) { Scale = 1 };
         Drag(model, DrawTool.None, new Point(10, 10), new Point(190, 190));
         return model;
     }

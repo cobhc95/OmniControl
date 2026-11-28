@@ -12,7 +12,7 @@ public static partial class CoreAudio
 
     /// Gives back one reference this call took (a wrapper shared with other code keeps the references those took), so a read that runs
     /// every few seconds does not leave its COM objects for the finalizer.
-    private static void ReleaseCom(object? com)
+    internal static void ReleaseCom(object? com)
     {
         if (com is not null && Marshal.IsComObject(com)) Marshal.ReleaseComObject(com);
     }

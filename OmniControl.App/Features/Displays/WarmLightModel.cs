@@ -2,15 +2,12 @@ using OmniControl.App.Shared.Contracts;
 
 namespace OmniControl.App.Features.Displays;
 
-/// The warm-light schedule as its cards, action and state see it: on or off, the two times, the temperature it warms to, and what it is
-/// doing now. On or off and the times are its automation rule's (<see cref="WarmLightScheduler"/>), the temperature its own; it layers over each
-/// display's own colour temperature: it warms towards the target and never cools. Used on the UI thread.
+/// Night light as its cards, actions and states see it: a live on/off switch that warms immediately, the temperature it warms to,
+/// and an optional schedule (its automation rule in <see cref="WarmLightScheduler"/>) that flicks the switch on and off at the chosen times.
+/// Layers over each display's own colour temperature: it warms towards the target and never cools. Used on the UI thread.
 internal sealed class WarmLightModel
 {
-    public const string TurnOn = "Turn on", TurnOff = "Turn off", Label = "Warm light at night", StartLabel = "Warm from", EndLabel = "Warm until", TargetLabel = "Warm light temperature";
-
-    /// The words of the on/off button of the first card.
-    public static readonly IReadOnlyList<string> StateButtons = new[] { TurnOn, TurnOff };
+    public const string Label = "Night light", ScheduleLabel = "Schedule night light", StartLabel = "Turn on at", EndLabel = "Turn off at", TargetLabel = "Temperature";
 
     private readonly WarmLightScheduler _scheduler;
     private readonly DisplaySettingsStore _store;
@@ -18,7 +15,7 @@ internal sealed class WarmLightModel
 
     public WarmLightModel(WarmLightScheduler scheduler, DisplaySettingsStore store, FeatureRulesSlot rules) => (_scheduler, _store, _rules) = (scheduler, store, rules);
 
-    /// The schedule or its settings changed (the scheduler's own notice).
+    /// Night light or its schedule settings changed (the scheduler's own notice).
     public event Action? Changed
     {
         add => _scheduler.Changed += value;
@@ -28,24 +25,32 @@ internal sealed class WarmLightModel
     /// The times offered, by name (half hours).
     public static IReadOnlyList<string> TimeNames { get; } = WarmSchedule.Times().Select(WarmSchedule.Clock).ToList();
 
-    public bool IsOn => _scheduler.Enabled;
+    public bool IsOn => _scheduler.IsOn;
 
-    /// "Off", "Active until 07:00" or "Starts at 21:00".
-    public string StateText => _scheduler.StateText;
+    public bool IsScheduled => _scheduler.IsScheduled;
+
+    public string NightNote => _scheduler.NightNote;
+
+    public string ScheduleNote => _scheduler.ScheduleNote;
 
     public string StartName => Nearest(_scheduler.Window.Start);
     public string EndName => Nearest(_scheduler.Window.End);
 
-    /// The warm light rule as it is now, or null.
+    /// The Night light schedule rule as it is now, or null.
     public FeatureRuleView? Rule => _scheduler.Rule;
 
     public void EditRule() => _scheduler.EditRule();
     public int Kelvin => Math.Clamp(_store.WarmLight.Kelvin, SoftwareColor.TemperatureMin, SoftwareColor.TemperatureNeutral);
 
-    public void Toggle() => SetEnabled(!IsOn);
+    public void Toggle() => SetOn(!IsOn);
 
-    /// Switches the rule on or off (the button, its action, its state and "Restore defaults"); a deleted rule is made again when turned on.
-    public void SetEnabled(bool on)
+    /// Turns Night light on or off immediately (the switch, tray tile, action, state and "Restore defaults").
+    public void SetOn(bool on) => _scheduler.SetOn(on);
+
+    public void ToggleScheduled() => SetScheduled(!IsScheduled);
+
+    /// Turns the automatic schedule rule on or off without directly toggling Night light; a deleted rule is made again when turned on.
+    public void SetScheduled(bool on)
     {
         if (_rules.Current is not { } rules) return;
         if (_scheduler.Rule is null) rules.Ensure(WarmLightScheduler.FadeId, WarmLightScheduler.RuleName, on, Window());
@@ -66,14 +71,14 @@ internal sealed class WarmLightModel
         return OperationResult.Ok();
     }
 
-    /// Off, with the default times and temperature.
+    /// Night light and schedule off, with the default times and temperature.
     public void Reset()
     {
         var defaults = new WarmLightSettings();
         var settings = _store.WarmLight;
         (settings.Start, settings.End, settings.Kelvin) = (defaults.Start, defaults.End, defaults.Kelvin);
         _store.SaveWarmLight();
-        SetEnabled(false);
+        SetScheduled(false);
         _rules.Current?.SetTrigger(WarmLightScheduler.FadeId, Window());
         _scheduler.Stop();
     }

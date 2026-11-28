@@ -18,13 +18,16 @@ public sealed class CaptureSession
 
     /// <param name="recordAtOnce">"Record area": recording starts as soon as a selection is drawn.</param>
     /// <param name="shots">Each monitor and its frozen picture; the session owns the pictures and releases them when it closes.</param>
-    public CaptureSession(IEnumerable<(ScreenRect Bounds, Bitmap Picture)> shots, IShotOutput output, StayOnTop onTop, bool recordAtOnce, ToolSizes sizes)
+    /// <param name="layout">The windows and edges behind the overlays (desktop pixels), for snapping and picking a window.</param>
+    public CaptureSession(IEnumerable<(ScreenRect Bounds, Bitmap Picture)> shots, DesktopLayout layout, IShotOutput output, StayOnTop onTop, bool recordAtOnce,
+        ToolSizes sizes, SnapChoice snap)
     {
         _onTop = onTop;
         foreach (var (bounds, picture) in shots)
         {
-            var model = new CaptureOverlayViewModel(picture, bounds, output, Close, recordAtOnce, sizes);
+            var model = new CaptureOverlayViewModel(picture, bounds, output, Close, recordAtOnce, sizes, new WindowSnap(layout.Within(bounds)), snap);
             model.SelectionStarted += OnSelectionStarted;
+            model.HoverStarted += OnHoverStarted;
             _overlays.Add((new CaptureOverlay(model, bounds, onTop == StayOnTop.Strong), model));
         }
         _keepOnTop.Tick += OnKeepOnTop;
@@ -48,6 +51,13 @@ public sealed class CaptureSession
             if (model != started) model.DropSelection();
     }
 
+    /// The pointer is over another monitor's overlay now: the others stop showing their hovered window.
+    private void OnHoverStarted(CaptureOverlayViewModel started)
+    {
+        foreach (var (_, model) in _overlays)
+            if (model != started) model.DropHover();
+    }
+
     private void OnKeepOnTop(object? sender, EventArgs e)
     {
         foreach (var (window, _) in _overlays) window.PutOnTop();
@@ -68,6 +78,7 @@ public sealed class CaptureSession
             window.Closed -= OnWindowClosed;
             window.Close();
             model.SelectionStarted -= OnSelectionStarted;
+            model.HoverStarted -= OnHoverStarted;
             model.Dispose();
         }
         _overlays.Clear();

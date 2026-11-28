@@ -45,13 +45,11 @@ public sealed class MouseHook : IDisposable
     private bool _started;
     private volatile bool _installed; // the low-level hook is in place now (the watchdog only looks then)
     private long _lastCallback = Environment.TickCount64; // when Windows last called the hook; written by every call, read by the watchdog
-    private readonly ManualResetEventSlim _stopWatchdog = new();
+    private Timer? _watchdog;
+    private long _lastWatchdogLook;
+    private (int X, int Y)? _lastWatchdogAt;
 
     private int _logged, _wheelLogged, _moveLogged, _diagnosed;
-
-    // Log lines are written by their own thread: file writes inside the hook callback would slow every input down.
-    private readonly ConcurrentQueue<(string Line, bool Problem)> _logLines = new();
-    private readonly SemaphoreSlim _logReady = new(0);
 
     // Problems (a slow call, the hook dropped) are told at most once per CoreTiming.HookReportGapMs, with a count of the ones in between.
     private readonly object _problemGate = new();
@@ -75,8 +73,7 @@ public sealed class MouseHook : IDisposable
     private void Note(string line, ref int counter)
     {
         if (Log is null || Interlocked.Increment(ref counter) > CoreTiming.HookLogLimit) return;
-        _logLines.Enqueue((line, false));
-        _logReady.Release();
+        ThreadPool.QueueUserWorkItem(_ => Log?.Invoke(line));
     }
 
     /// Tells a problem (any thread, never waits on anything slow): to <see cref="Problem"/> and the hook log, at most once per gap.
@@ -96,8 +93,11 @@ public sealed class MouseHook : IDisposable
             }
         }
         if (report is null) return;
-        _logLines.Enqueue((report, true));
-        _logReady.Release();
+        ThreadPool.QueueUserWorkItem(_ =>
+        {
+            Log?.Invoke(report);
+            Problem?.Invoke(report);
+        });
     }
 
     /// Lets the layers above add a line about what they did with an input (its own budget of lines per run). Never blocks.
@@ -151,14 +151,14 @@ public sealed class MouseHook : IDisposable
     public bool Start()
     {
         if (_started) return true;
-        new Thread(WriteLog) { IsBackground = true, Name = "MouseHookLog" }.Start();
+        _watchdog = new Timer(_ => WatchdogTick(), null, Timeout.Infinite, Timeout.Infinite);
         var ok = false;
         var ready = new ManualResetEventSlim();
         // Highest priority: Windows holds back all mouse input while the callback runs, and gestures must be seen at once.
         new Thread(() => Loop(ready, v => ok = v)) { IsBackground = true, Name = "MouseHook", Priority = ThreadPriority.Highest }.Start();
         ready.Wait();
         _started = _threadId != 0;
-        if (_started) new Thread(Watchdog) { IsBackground = true, Name = "MouseHookWatchdog", Priority = ThreadPriority.BelowNormal }.Start();
+        if (_started && _installed) ArmWatchdog(true);
         return ok;
     }
 
@@ -191,20 +191,9 @@ public sealed class MouseHook : IDisposable
     {
         if (!_started) return;
         _started = false;
-        _stopWatchdog.Set();
+        _watchdog?.Dispose();
+        _watchdog = null;
         PostThreadMessage(_threadId, WmQuit, UIntPtr.Zero, IntPtr.Zero);
-    }
-
-    /// Writes queued log lines; a background thread, so it simply ends with the program.
-    private void WriteLog()
-    {
-        while (true)
-        {
-            _logReady.Wait();
-            if (!_logLines.TryDequeue(out var item)) continue;
-            Log?.Invoke(item.Line);
-            if (item.Problem) Problem?.Invoke(item.Line);
-        }
     }
 
     private void Loop(ManualResetEventSlim ready, Action<bool> started)
@@ -251,6 +240,7 @@ public sealed class MouseHook : IDisposable
         Note(hook == IntPtr.Zero ? $"hook refused, error {Marshal.GetLastWin32Error()}" : successLine, ref _logged);
         Volatile.Write(ref _lastCallback, Environment.TickCount64);
         _installed = hook != IntPtr.Zero;
+        ArmWatchdog(_installed);
         return hook;
     }
 
@@ -258,28 +248,36 @@ public sealed class MouseHook : IDisposable
     private void Remove(ref IntPtr hook)
     {
         _installed = false;
+        ArmWatchdog(false);
         UnhookWindowsHookEx(hook);
         hook = IntPtr.Zero;
     }
 
-    /// Windows silently removes a hook whose callback was too slow. Every <see cref="CoreTiming.HookWatchdogMs"/> this checks whether the
+    private void ArmWatchdog(bool on)
+    {
+        if (on)
+        {
+            _lastWatchdogLook = Environment.TickCount64;
+            _lastWatchdogAt = SystemCommands.GetCursorPos();
+        }
+        try { _watchdog?.Change(on ? CoreTiming.HookWatchdogMs : Timeout.Infinite, on ? CoreTiming.HookWatchdogMs : Timeout.Infinite); }
+        catch (ObjectDisposedException) { }
+    }
+
+    /// Windows silently removes a hook whose callback was too slow. Every <see cref="CoreTiming.HookWatchdogMs"/> (only while installed) this checks whether the
     /// pointer moved and input happened since the last look while the hook was never called; if so the hook is reinstalled on its thread.
     /// It only reads the pointer and the idle time; it never sends input.
-    private void Watchdog()
+    private void WatchdogTick()
     {
-        var lastLook = Environment.TickCount64;
-        var lastAt = SystemCommands.GetCursorPos();
-        while (!_stopWatchdog.Wait(CoreTiming.HookWatchdogMs))
-        {
-            var now = Environment.TickCount64;
-            var at = SystemCommands.GetCursorPos();
-            var moved = at is not null && lastAt is not null && at != lastAt;
-            var inputSince = Engine.PowerState.IdleFor().TotalMilliseconds < now - lastLook;
-            var silent = Volatile.Read(ref _lastCallback) < lastLook;
-            lastLook = now;
-            lastAt = at;
-            if (moved && inputSince && silent && _started && _installed) PostThreadMessage(_threadId, WmReinstall, UIntPtr.Zero, IntPtr.Zero);
-        }
+        if (!_started || !_installed) return;
+        var now = Environment.TickCount64;
+        var at = SystemCommands.GetCursorPos();
+        var moved = at is not null && _lastWatchdogAt is not null && at != _lastWatchdogAt;
+        var inputSince = Engine.PowerState.IdleFor().TotalMilliseconds < now - _lastWatchdogLook;
+        var silent = Volatile.Read(ref _lastCallback) < _lastWatchdogLook;
+        _lastWatchdogLook = now;
+        _lastWatchdogAt = at;
+        if (moved && inputSince && silent && _started && _installed) PostThreadMessage(_threadId, WmReinstall, UIntPtr.Zero, IntPtr.Zero);
     }
 
     /// Passes an input that does not come through the hook (a recognised trackpad gesture) to the same handlers, in the same order and

@@ -41,7 +41,7 @@ public sealed partial class DisplaysPageViewModel
             var item = page?._hardware.GetValueOrDefault(display);
             builder.AddEach(hardware.Where(c => available.Contains(c.Label)), c => DisplayCards.Of(c, display.Name), c => item?.AvailableCards.FirstOrDefault(e => e.Label == c.Label));
         }
-        builder.AddEach(DisplayCards.Desktop, c => c, c => page?.Software.Items.OfType<IEditorItem>().FirstOrDefault(e => e.Label == c.Label));
+        builder.AddEach(DisplayCards.Desktop, c => c, c => page?.Software.Items.Concat(page._warm.Cards).OfType<IEditorItem>().FirstOrDefault(e => e.Label == c.Label));
         var software = DisplayControls.Software.Select(l => DisplayCards.Level(l.Spec, DisplayControls.SoftwareGroup)).ToList();
         foreach (var display in service.SoftwareDisplays)
         {

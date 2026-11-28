@@ -39,6 +39,7 @@ public partial class App : Application
             // Only the one exit path ends the app: the main window is closed and made again after a long hide (WindowLifecycle).
             desktop.ShutdownMode = ShutdownMode.OnExplicitShutdown;
             var shell = new ShellViewModel();
+            shell.WindowShownChanged += _watchdog.SetActive;
             DataTemplates.AddRange(shell.Templates);
             WindowLifecycle.Attach(this, desktop, () => new MainWindow { DataContext = shell }, shell, settings,
                 StartupRegistration.IsBackgroundStart(desktop.Args ?? Array.Empty<string>()));

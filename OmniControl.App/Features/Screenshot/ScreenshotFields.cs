@@ -9,7 +9,7 @@ namespace OmniControl.App.Features.Screenshot;
 public static class ScreenshotFields
 {
     public const string Same = "same", Folder = "folder", Pattern = "pattern", Format = "format", Quality = "quality", CopyAs = "copy",
-        Quick = "quick", WindowsKeys = "winkeys", OpenFolder = "open", Note = "note", OnTop = "ontop", AskFolder = "askfolder";
+        Quick = "quick", WindowsKeys = "winkeys", OpenFolder = "open", Note = "note", OnTop = "ontop", AskFolder = "askfolder", Snap = "snap";
 
     public const string Video = "video", RecFolder = "vfolder", RecFormat = "vformat", FrameRate = "fps", Encoder = "encoder",
         RecQuality = "vquality", SystemSound = "sound", Microphone = "mic", Cursor = "cursor", Clicks = "clicks", AskVideoFolder = "askvfolder";
@@ -49,6 +49,8 @@ public static class ScreenshotFields
         }
         else options.Add(ActionOption.Text(Pattern, "File name", ScreenshotOptions.DefaultPattern, "{date} {time} {app}"));
         options.Add(kind is ShotKind.Area or ShotKind.Record ? ActionOption.Choice(OnTop, "Stay on top", OnTopNames) : ActionOption.Choice(Quick, "Then", QuickNames));
+        if (kind is ShotKind.Area or ShotKind.Record)
+            options.Add(ActionOption.Toggle(Snap, "Snap to windows", on: true, note: "Edges snap to window borders and a click selects a whole window; hold Alt to ignore it for one drag"));
         if (kind is ShotKind.Area or ShotKind.Record) options.AddRange(VideoOptions(hevc));
         options.Add(ActionOption.Toggle(OpenFolder, "Open the folder after saving"));
         options.Add(ActionOption.Toggle(Note, "Show a note after saving", on: true));
@@ -90,6 +92,7 @@ public static class ScreenshotFields
         [OpenFolder] = Flag(o.OpenFolder),
         [Note] = Flag(o.ShowNote),
         [OnTop] = OnTopNames[(int)o.OnTop],
+        [Snap] = Flag(o.SnapToWindows),
         [RecFolder] = o.VideoFolder,
         [AskVideoFolder] = Flag(o.AskVideoFolder),
         [RecFormat] = VideoMath.Name(o.VideoFormat),
@@ -119,6 +122,7 @@ public static class ScreenshotFields
             case OpenFolder: o.OpenFolder = value == "1"; break;
             case Note: o.ShowNote = value == "1"; break;
             case OnTop: o.OnTop = (StayOnTop)IndexOf(OnTopNames, value); break;
+            case Snap: o.SnapToWindows = value == "1"; break;
             case RecFolder: o.VideoFolder = value.Trim(); break;
             case AskVideoFolder: o.AskVideoFolder = value == "1"; break;
             case RecFormat: o.VideoFormat = VideoMath.Parse(value); break;

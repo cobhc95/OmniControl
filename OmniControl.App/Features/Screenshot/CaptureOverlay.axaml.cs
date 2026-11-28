@@ -96,8 +96,15 @@ public partial class CaptureOverlay : Window
 
     protected override void OnKeyDown(KeyEventArgs e)
     {
-        if (!TextPopup.IsOpen && _model.HandleKey(e.Key, e.KeyModifiers)) e.Handled = true;
+        if (e.Key is Key.LeftAlt or Key.RightAlt) _model.AltHeld = true;
+        else if (!TextPopup.IsOpen && _model.HandleKey(e.Key, e.KeyModifiers)) e.Handled = true;
         base.OnKeyDown(e);
+    }
+
+    protected override void OnKeyUp(KeyEventArgs e)
+    {
+        if (e.Key is Key.LeftAlt or Key.RightAlt) _model.AltHeld = false;
+        base.OnKeyUp(e);
     }
 
     /// A bar took its size (it opened, or its buttons changed): placed again at once, so it never shows at a stale place.
@@ -106,13 +113,24 @@ public partial class CaptureOverlay : Window
     /// Puts the size label above the selection's top-left corner, the toolbar beside it and the action bar under it, each kept on screen.
     private void PlaceBars()
     {
-        if (_model.Selection is not { IsEmpty: false } sel || Bounds.Width <= 0) return;
+        if (Bounds.Width <= 0) return;
         var k = Bounds.Width / _model.PictureWidth;
+        if (_model.Selection is not { IsEmpty: false } sel)
+        {
+            if (_model.Hovered is { } window) PlaceLabel(window.Frame.X * k, window.Frame.Y * k); // the lit window's name and size
+            return;
+        }
         double x = sel.X * k, y = sel.Y * k, w = sel.Width * k, h = sel.Height * k;
         var tool = SelectionMath.PlaceBar(BarSide.Right, x, y, w, h, ToolBar.Bounds.Width, ToolBar.Bounds.Height, Bounds.Width, Bounds.Height, _gap);
         Place(ToolPopup, tool);
         Place(ActionPopup, SelectionMath.PlaceBarAvoiding(x, y, w, h, ActionBar.Bounds.Width, ActionBar.Bounds.Height,
             (tool.X, tool.Y, ToolBar.Bounds.Width, ToolBar.Bounds.Height), Bounds.Width, Bounds.Height, _gap));
+        PlaceLabel(x, y);
+    }
+
+    /// The size label above a corner (inside it when there is no room above).
+    private void PlaceLabel(double x, double y)
+    {
         var labelY = y - _gap - SizeLabel.Bounds.Height;
         Place(SizePopup, (x, labelY >= 0 ? labelY : y + _gap));
     }

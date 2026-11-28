@@ -48,8 +48,14 @@ public partial class MainWindow : Window
         }
     }
 
-    /// Before the window is let go (<see cref="ViewLetGo"/>).
-    internal void LetGo() => ViewLetGo.Clear(this);
+    /// Before the window is let go (<see cref="ViewLetGo"/>): detaches built page views and clears references so Avalonia's ToolTipService cannot pin a page tree.
+    internal void LetGo()
+    {
+        _returnFocus = null;
+        PagesHost.Clear();
+        ViewLetGo.Clear(this);
+        DataContext = null;
+    }
 
     /// A click anywhere except the hotkey box that is listening cancels listening.
     private void OnPointerPressedTunnel(object? sender, PointerPressedEventArgs e)

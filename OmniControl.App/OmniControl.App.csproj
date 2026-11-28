@@ -37,7 +37,7 @@
     <BuiltInComInteropSupport>true</BuiltInComInteropSupport>
     <JsonSerializerIsReflectionEnabledByDefault>true</JsonSerializerIsReflectionEnabledByDefault>
     <ServerGarbageCollection>false</ServerGarbageCollection>
-    <ConcurrentGarbageCollection>false</ConcurrentGarbageCollection>
+    <ConcurrentGarbageCollection>true</ConcurrentGarbageCollection>
     <PublishReadyToRun>true</PublishReadyToRun>
     <ReadyToRunOnly>^(OmniControl|Avalonia\.Base|LibreHardwareMonitorLib)$</ReadyToRunOnly>
     <LeaveOutOfPublish>^(clrgc|clrgcexp|msquic|Microsoft\.DiaSymReader\.Native\.amd64|mscordbi|mscordaccore.*|libMonoPosixHelper|MonoPosixHelper)\.dll$|^createdump\.exe$|\.pdb$</LeaveOutOfPublish>

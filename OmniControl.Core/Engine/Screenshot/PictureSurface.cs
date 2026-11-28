@@ -20,8 +20,18 @@ public sealed unsafe class PictureSurface : IDisposable
     private IntPtr _window, _edgeBrush, _cursor;
     private uint _edgeColor;
     private int _line = 1, _handle = 1;
-    private ScreenRect? _selection;
+    private ScreenRect? _selection, _highlight;
+    private ScreenRect[] _guides = Array.Empty<ScreenRect>();
     private bool _disposed;
+
+    /// The hovered window's frame is this many times the selection's line.
+    private const int HighlightLines = 2;
+
+    /// A guide's dashes and gaps, in lines.
+    private const int Dash = 4, Gap = 3;
+
+    /// True while an Alt key is down, as of the pointer message being handled now.
+    public static bool AltHeld => (GetKeyState(VkMenu) & 0x8000) != 0;
 
     public int Width { get; }
     public int Height { get; }
@@ -119,13 +129,34 @@ public sealed unsafe class PictureSurface : IDisposable
         line = Math.Max(1, line);
         handle = Math.Max(1, handle);
         if (_edgeBrush != IntPtr.Zero && edgeArgb == _edgeColor && line == _line && handle == _handle) return;
-        var edges = SelectionFrame.Changed(_selection, null, _line, _handle); // where the old frame was
+        var edges = SelectionFrame.Changed(_selection, null, _line, _handle) // where the old frame was
+            .Concat(SelectionFrame.Changed(_highlight, null, _line * HighlightLines, 0)).ToList();
         _edgeColor = edgeArgb;
         _line = line;
         _handle = handle;
         if (_edgeBrush != IntPtr.Zero) DeleteObject(_edgeBrush);
         _edgeBrush = CreateSolidBrush((edgeArgb & 0xFF) << 16 | edgeArgb & 0xFF00 | (edgeArgb >> 16) & 0xFF); // COLORREF is 0x00BBGGRR
-        foreach (var part in edges.Concat(SelectionFrame.Changed(null, _selection, _line, _handle))) Invalidate(part);
+        foreach (var part in edges.Concat(SelectionFrame.Changed(null, _selection, _line, _handle))
+                     .Concat(SelectionFrame.Changed(null, _highlight, _line * HighlightLines, 0)).Concat(_guides)) Invalidate(part);
+    }
+
+    /// The hovered window's frame (picture pixels; null = none), shown bright with a thicker frame and no handles while there is no selection.
+    public void SetHighlight(ScreenRect? area)
+    {
+        if (area is { IsEmpty: true }) area = null;
+        if (area == _highlight) return;
+        var changed = SelectionFrame.Changed(_highlight, area, _line * HighlightLines, 0);
+        _highlight = area;
+        foreach (var part in changed) Invalidate(part);
+    }
+
+    /// The snap guides: thin rectangles along the edges the selection is snapped to, drawn dashed in the frame's colour. Empty = none.
+    public void SetGuides(IReadOnlyList<ScreenRect> guides)
+    {
+        if (guides.Count == _guides.Length && guides.SequenceEqual(_guides)) return;
+        foreach (var old in _guides) Invalidate(old);
+        _guides = guides.ToArray();
+        foreach (var now in _guides) Invalidate(now);
     }
 
     /// The selection (picture pixels; null or empty = none): only the strips that changed are painted again.
@@ -213,26 +244,49 @@ public sealed unsafe class PictureSurface : IDisposable
         try
         {
             var area = new ScreenRect(paint.Paint.Left, paint.Paint.Top, paint.Paint.Right - paint.Paint.Left, paint.Paint.Bottom - paint.Paint.Top);
-            if (_selection is not { } selection)
+            if ((_selection ?? _highlight) is not { } bright)
             {
                 Blit(dc, area, _dim);
+                PaintGuides(dc);
                 return;
             }
             var saved = SaveDC(dc);
-            ExcludeClipRect(dc, selection.X, selection.Y, selection.Right, selection.Bottom);
+            ExcludeClipRect(dc, bright.X, bright.Y, bright.Right, bright.Bottom);
             Blit(dc, area, _dim);
             RestoreDC(dc, saved);
-            Blit(dc, area.Intersect(selection), _bright);
-            foreach (var part in SelectionFrame.Line(selection, _line).Concat(SelectionFrame.Handles(selection, _handle)))
-            {
-                var rect = new Rect { Left = part.X, Top = part.Y, Right = part.Right, Bottom = part.Bottom };
-                FillRect(dc, ref rect, _edgeBrush);
-            }
+            Blit(dc, area.Intersect(bright), _bright);
+            var frame = _selection is { } selection
+                ? SelectionFrame.Line(selection, _line).Concat(SelectionFrame.Handles(selection, _handle))
+                : SelectionFrame.Line(bright, _line * HighlightLines);
+            foreach (var part in frame) Fill(dc, part);
+            PaintGuides(dc);
         }
         finally
         {
             EndPaint(hwnd, ref paint);
         }
+    }
+
+    /// Each guide as dashes along its length (GDI clips them to what is being painted).
+    private void PaintGuides(IntPtr dc)
+    {
+        int dash = Dash * _line, step = (Dash + Gap) * _line;
+        foreach (var guide in _guides)
+        {
+            var across = guide.Width <= guide.Height; // a vertical guide is narrower than it is tall
+            var length = across ? guide.Height : guide.Width;
+            for (var at = 0; at < length; at += step)
+            {
+                var piece = Math.Min(dash, length - at);
+                Fill(dc, across ? guide with { Y = guide.Y + at, Height = piece } : guide with { X = guide.X + at, Width = piece });
+            }
+        }
+    }
+
+    private void Fill(IntPtr dc, ScreenRect part)
+    {
+        var rect = new Rect { Left = part.X, Top = part.Y, Right = part.Right, Bottom = part.Bottom };
+        FillRect(dc, ref rect, _edgeBrush);
     }
 
     private void Blit(IntPtr dc, ScreenRect area, PictureCopy from)

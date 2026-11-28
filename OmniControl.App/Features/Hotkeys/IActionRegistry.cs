@@ -20,4 +20,7 @@ public interface IActionRegistry : IActionCatalogue
 
     /// Says that the actions with these old ids are now the ones with the new ids (a merged smart device's actions); raises <see cref="IActionCatalogue.Moved"/>.
     void Move(IReadOnlyDictionary<string, string> moved);
+
+    /// Registers a pinned system-wide key on the shared hotkey thread (never paused or held; null gesture removes it). Used for the emergency pause key.
+    void PinKey(string id, string? gesture, Action? run, Action<string>? failed = null) { }
 }

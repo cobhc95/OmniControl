@@ -25,7 +25,7 @@ public sealed partial class DisplaysService
     private Task<bool> ApplyState(DisplayRestoreState state)
     {
         ApplyPicture(state.Picture);
-        _warmLight.Model.SetEnabled(state.WarmLight);
+        _warmLight.Model.SetOn(state.WarmLight);
         return Task.FromResult(true);
     }
 }

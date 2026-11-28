@@ -20,6 +20,7 @@ public sealed class FullScreenWatcher
     [DllImport("user32.dll")] private static extern bool PostThreadMessage(uint thread, uint message, UIntPtr wParam, IntPtr lParam);
     [DllImport("kernel32.dll")] private static extern uint GetCurrentThreadId();
     [DllImport("user32.dll")] private static extern IntPtr GetForegroundWindow();
+    [DllImport("user32.dll")] private static extern uint GetWindowThreadProcessId(IntPtr window, out uint processId);
 
     [StructLayout(LayoutKind.Sequential)]
     private struct NativeMessage { public IntPtr Hwnd; public uint Message; public UIntPtr WParam; public IntPtr LParam; public uint Time; public int X, Y; }
@@ -30,6 +31,8 @@ public sealed class FullScreenWatcher
     private bool _enabled;
     private Thread? _worker;
     private uint _workerThread;
+    private IntPtr _movedHook; // worker thread only: location-change hook scoped to the foreground process/thread
+    private uint _movedPid, _movedTid;
 
     public FullScreenWatcher() => _proc = OnEvent;
 
@@ -64,12 +67,12 @@ public sealed class FullScreenWatcher
     {
         lock (_gate) _workerThread = GetCurrentThreadId();
         var foreground = SetWinEventHook(EventSystemForeground, EventSystemForeground, IntPtr.Zero, _proc, 0, 0, OutOfContext);
-        var moved = SetWinEventHook(EventObjectLocationChange, EventObjectLocationChange, IntPtr.Zero, _proc, 0, 0, OutOfContext);
         try
         {
             _active = Enabled && AppInFront();
-            if (foreground != IntPtr.Zero && moved != IntPtr.Zero)
+            if (foreground != IntPtr.Zero)
             {
+                ScopeLocationHook();
                 while (Enabled && GetMessage(out _, IntPtr.Zero, 0, 0) > 0) { }
                 return;
             }
@@ -81,17 +84,37 @@ public sealed class FullScreenWatcher
         }
         finally
         {
+            UnhookLocation();
             if (foreground != IntPtr.Zero) UnhookWinEvent(foreground);
-            if (moved != IntPtr.Zero) UnhookWinEvent(moved);
             lock (_gate) _workerThread = 0;
             _active = false;
         }
     }
 
+    // Scopes EVENT_OBJECT_LOCATIONCHANGE to the current foreground thread/process instead of the entire desktop, avoiding thousands of IPC wakeups/sec.
+    private void ScopeLocationHook()
+    {
+        var fg = GetForegroundWindow();
+        uint pid = 0;
+        var tid = fg != IntPtr.Zero ? GetWindowThreadProcessId(fg, out pid) : 0u;
+        if (pid == _movedPid && tid == _movedTid && _movedHook != IntPtr.Zero) return;
+        UnhookLocation();
+        if (pid == 0 || tid == 0) return;
+        _movedHook = SetWinEventHook(EventObjectLocationChange, EventObjectLocationChange, IntPtr.Zero, _proc, pid, tid, OutOfContext);
+        if (_movedHook != IntPtr.Zero) (_movedPid, _movedTid) = (pid, tid);
+    }
+
+    private void UnhookLocation()
+    {
+        if (_movedHook != IntPtr.Zero) UnhookWinEvent(_movedHook);
+        (_movedHook, _movedPid, _movedTid) = (IntPtr.Zero, 0, 0);
+    }
+
     // On the worker (its message loop): only a move or resize of the window in front counts (not the caret's, the cursor's or another window's).
     private void OnEvent(IntPtr hook, uint eventType, IntPtr window, int objectId, int childId, uint thread, uint time)
     {
-        if (eventType == EventObjectLocationChange && (objectId != ObjIdWindow || childId != 0 || window != GetForegroundWindow())) return;
+        if (eventType == EventSystemForeground) ScopeLocationHook();
+        else if (eventType == EventObjectLocationChange && (objectId != ObjIdWindow || childId != 0 || window != GetForegroundWindow())) return;
         _active = Enabled && AppInFront();
     }
 }

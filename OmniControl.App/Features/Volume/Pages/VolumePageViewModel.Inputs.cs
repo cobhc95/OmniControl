@@ -75,6 +75,15 @@ public sealed partial class VolumePageViewModel
         return rows;
     }
 
+    /// Lightweight sync for close-watch microphone level changes without rebuilding rows or reconciling the effects engine.
+    private void SyncInputLevels()
+    {
+        if (_controls.InputJustChanged) return;
+        foreach (var item in _inputs.Values)
+            if (_mixer.InputLevel(item.Id, out var v, out var muted))
+                item.Sync(v, muted, _mixer.IsFxOn(item.Key), FxSlot.EffectCount(_mixer.FxChain(item.Key)));
+    }
+
     /// A level action or Windows' own report changed a microphone or a combined microphone: its row shows it.
     private void OnInputShown(string deviceId, int level, bool muted)
     {

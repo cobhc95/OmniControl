@@ -103,8 +103,8 @@ public sealed partial class AutomationService
         void Offer() => _programs.Offer(programs.Found, programs.Running);
         return new(AutomationTriggers.PickTitle, AutomationTriggers.SearchText, new LiveList(
             () => AutomationTriggers.Choices(_sources, keep, _programs.AddAsync).Where(c => withHotkey || c.Spec != AutomationTriggers.Hotkey).ToList(),
-            h => { TriggersChanged += h; ValuesShown += h; programs.Ready += Offer; _programs.PickerOpened(); _usbPickers++; SyncUsb(); },
-            h => { TriggersChanged -= h; ValuesShown -= h; programs.Ready -= Offer; _programs.PickerClosed(); _usbPickers--; SyncUsb(); }));
+            h => { TriggersChanged += h; ValuesShown += h; programs.Ready += Offer; _programs.PickerOpened(); _usbPickers++; SyncTriggers(); },
+            h => { TriggersChanged -= h; ValuesShown -= h; programs.Ready -= Offer; _programs.PickerClosed(); _usbPickers--; SyncTriggers(); }));
     }
 
     // Raised (once per batch) when a state's value changed, only while a picker shows the values: nothing listens otherwise.

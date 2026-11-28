@@ -21,15 +21,16 @@ internal static class DisplayCards
             Choices = DisplayOrientationModel.Names,
             Tip = "Turns the screen through Windows. Its width and height swap between landscape and portrait.",
         },
-        WarmLight = new(WarmLightModel.Label, Software + "night light schedule evening warm kelvin", DisplayControls.SoftwareGroup) { Choices = WarmLightModel.StateButtons },
-        WarmFrom = new(WarmLightModel.StartLabel, Software + "night light schedule evening start time", DisplayControls.SoftwareGroup) { Choices = WarmLightModel.TimeNames },
-        WarmUntil = new(WarmLightModel.EndLabel, Software + "night light schedule morning end time", DisplayControls.SoftwareGroup) { Choices = WarmLightModel.TimeNames },
-        WarmTemperature = new(WarmLightModel.TargetLabel, Software + "night light schedule kelvin temperature", DisplayControls.SoftwareGroup);
+        WarmLight = new(WarmLightModel.Label, Software + "warm light night schedule evening blue light filter kelvin", DisplayControls.SoftwareGroup),
+        WarmSchedule = new(WarmLightModel.ScheduleLabel, Software + "warm light night schedule timer evening morning auto", DisplayControls.SoftwareGroup),
+        WarmFrom = new(WarmLightModel.StartLabel, Software + "warm light night schedule evening start time turn on", DisplayControls.SoftwareGroup) { Choices = WarmLightModel.TimeNames },
+        WarmUntil = new(WarmLightModel.EndLabel, Software + "warm light night schedule morning end time turn off", DisplayControls.SoftwareGroup) { Choices = WarmLightModel.TimeNames },
+        WarmTemperature = new(WarmLightModel.TargetLabel, Software + "warm light night schedule kelvin temperature", DisplayControls.SoftwareGroup);
 
     /// The whole desktop's software cards, saturation first (the page shows them in this order).
     public static readonly IReadOnlyList<SearchCard> Desktop = new[]
     {
-        Saturation, Grayscale, Invert, WarmLight, WarmFrom, WarmUntil, WarmTemperature,
+        Saturation, Grayscale, Invert, WarmLight, WarmTemperature, WarmSchedule, WarmFrom, WarmUntil,
     };
 
     /// A slider of a display (a monitor's level or a software control).

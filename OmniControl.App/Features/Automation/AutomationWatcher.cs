@@ -19,10 +19,15 @@ public sealed class AutomationWatcher : IDisposable
         remove => _usb.Seen -= value;
     }
 
+    public event Action? EventQueued;
+
     public AutomationWatcher() => _usb.Changed += OnUsbChanged;
 
-    private void OnUsbChanged(bool connected, string name) =>
+    private void OnUsbChanged(bool connected, string name)
+    {
         _devices.Enqueue(new AutomationEvent(connected ? AutomationTriggers.DeviceConnect : AutomationTriggers.DeviceDisconnect, name));
+        EventQueued?.Invoke();
+    }
 
     /// Starts watching USB devices (done once a rule wants them, so nothing is watched for no reason).
     public void FollowDevices(bool needed)

@@ -93,6 +93,7 @@ public sealed class ScreenshotService
     private void OpenOverlay(ScreenshotOptions options, bool recordAtOnce)
     {
         var app = ScreenCapture.ActiveApp();
+        var layout = DesktopWindows.Read(); // before the overlay covers them, and as the frozen picture shows them
         var shots = new List<(ScreenRect, Bitmap)>();
         try
         {
@@ -103,7 +104,8 @@ public sealed class ScreenshotService
             foreach (var (_, picture) in shots) picture.Dispose(); // the monitors copied before the failure are not kept
             throw;
         }
-        _session = new CaptureSession(shots,new Output(this, options, app), options.OnTop, recordAtOnce, new ToolSizes(_settings.ToolSizes, _settings.Save));
+        _session = new CaptureSession(shots, layout, new Output(this, options, app), options.OnTop, recordAtOnce,
+            new ToolSizes(_settings.ToolSizes, _settings.Save), new SnapChoice(options, _settings.Save));
         _session.Closed += () => _session = null;
         _session.Show();
     }

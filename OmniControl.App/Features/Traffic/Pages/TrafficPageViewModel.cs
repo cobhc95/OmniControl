@@ -106,6 +106,8 @@ public sealed partial class TrafficPageViewModel : PageViewModel, IDisposable
         ShowPlace();
     }
 
+    public override void OnWindowReleased() => _icons.Clear();
+
     public override void OnOnScreenChanged(bool onScreen)
     {
         _onScreen = onScreen;

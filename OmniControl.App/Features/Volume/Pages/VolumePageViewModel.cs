@@ -124,6 +124,7 @@ public sealed partial class VolumePageViewModel : PageViewModel, IDisposable
         SyncSupport();
         Tabs.PropertyChanged += OnTabChanged;
         _mixer.Updated += Merge;
+        _mixer.InputLevelsUpdated += SyncInputLevels;
         _support.Changed += SyncSupport;
         _engine.StatusChanged += OnEngineStatus;
         _mixer.MasterDeviceChanged += OnMasterDeviceChanged;
@@ -139,6 +140,8 @@ public sealed partial class VolumePageViewModel : PageViewModel, IDisposable
         CreateEasy();
     }
 
+    public override void OnWindowReleased() => _icons.Clear();
+
     public override void OnShown()
     {
         _support.Refresh();
@@ -153,6 +156,7 @@ public sealed partial class VolumePageViewModel : PageViewModel, IDisposable
         if (e.PropertyName != nameof(PageTabs.Current)) return;
         OnPropertyChanged(nameof(ShowsMixer));
         OnPropertyChanged(nameof(ShowsWiring));
+        SyncLive();
     }
 
     /// Every Mixer row, in list order.
@@ -182,6 +186,7 @@ public sealed partial class VolumePageViewModel : PageViewModel, IDisposable
         _discovery.Dispose();
         Tabs.PropertyChanged -= OnTabChanged;
         _mixer.Updated -= Merge;
+        _mixer.InputLevelsUpdated -= SyncInputLevels;
         _support.Changed -= SyncSupport;
         _engine.StatusChanged -= OnEngineStatus;
         _mixer.MasterDeviceChanged -= OnMasterDeviceChanged;

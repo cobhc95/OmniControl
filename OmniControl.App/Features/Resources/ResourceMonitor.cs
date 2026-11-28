@@ -183,15 +183,27 @@ public sealed class ResourceMonitor : IReadingList, IDisposable
         finally { Monitor.Exit(_work); }
     }
 
-    /// The readings' choices as the sampler takes them: each disk's by its number now, each adapter's by its id (worker).
-    private SensorChoices ChoicesOf(IReadOnlyDictionary<string, string> chosen, IReadOnlyDictionary<string, string> gpus) => new(chosen.GetValueOrDefault(Reading.HottestId),
-        chosen.GetValueOrDefault(Reading.CpuTempId), chosen.GetValueOrDefault(Reading.GpuTempId),
-        (_disks ?? Array.Empty<PhysicalDisk>()).Where(d => chosen.ContainsKey(Reading.TemperatureIdOf(d))).ToDictionary(d => d.Number, d => chosen[Reading.TemperatureIdOf(d)]))
+    private (IReadOnlyDictionary<string, string> Sensors, IReadOnlyDictionary<string, string> Gpus, IReadOnlyList<PhysicalDisk>? Disks, IReadOnlyList<GraphicsAdapter>? GpuList) _choicesKey;
+    private SensorChoices _cachedChoices = SensorChoices.Auto;
+
+    /// The readings' choices as the sampler takes them: each disk's by its number now, each adapter's by its id (worker, cached until choices or hardware change).
+    private SensorChoices ChoicesOf(IReadOnlyDictionary<string, string> chosen, IReadOnlyDictionary<string, string> gpus)
     {
-        Gpus = (_gpus ?? Array.Empty<GraphicsAdapter>()).Where(g => chosen.ContainsKey(Reading.TemperatureIdOf(g))).ToDictionary(g => g.Id, g => chosen[Reading.TemperatureIdOf(g)]),
-        UsageGpu = gpus.GetValueOrDefault(Reading.GpuId),
-        TemperatureGpu = gpus.GetValueOrDefault(Reading.GpuTempId),
-    };
+        var disks = _disks;
+        var gpuList = _gpus;
+        if (ReferenceEquals(chosen, _choicesKey.Sensors) && ReferenceEquals(gpus, _choicesKey.Gpus)
+            && ReferenceEquals(disks, _choicesKey.Disks) && ReferenceEquals(gpuList, _choicesKey.GpuList))
+            return _cachedChoices;
+        _choicesKey = (chosen, gpus, disks, gpuList);
+        return _cachedChoices = new(chosen.GetValueOrDefault(Reading.HottestId),
+            chosen.GetValueOrDefault(Reading.CpuTempId), chosen.GetValueOrDefault(Reading.GpuTempId),
+            (disks ?? Array.Empty<PhysicalDisk>()).Where(d => chosen.ContainsKey(Reading.TemperatureIdOf(d))).ToDictionary(d => d.Number, d => chosen[Reading.TemperatureIdOf(d)]))
+        {
+            Gpus = (gpuList ?? Array.Empty<GraphicsAdapter>()).Where(g => chosen.ContainsKey(Reading.TemperatureIdOf(g))).ToDictionary(g => g.Id, g => chosen[Reading.TemperatureIdOf(g)]),
+            UsageGpu = gpus.GetValueOrDefault(Reading.GpuId),
+            TemperatureGpu = gpus.GetValueOrDefault(Reading.GpuTempId),
+        };
+    }
 
     private void Arrived(ResourceSample sample,
         (IReadOnlyDictionary<string, string> Sensors, IReadOnlyDictionary<string, string> Gpus, IReadOnlyDictionary<string, string> Speeds) chosen)

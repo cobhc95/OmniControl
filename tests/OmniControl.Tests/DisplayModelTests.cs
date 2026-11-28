@@ -95,11 +95,19 @@ public class DisplayModelTests
         var scheduler = new WarmLightScheduler(new SoftwareDisplayService(_ => throw new InvalidOperationException("no display is tracked"), keepRecovery: false), store, rules);
         var model = new WarmLightModel(scheduler, store, rules);
         var view = new WarmLightItem(model, _ => { });
-        var button = (ButtonItem)view.Cards[0];
-        var start = (ChoiceItem)view.Cards[1];
+        var night = (ToggleItem)view.Cards[0];
+        var schedule = (ToggleItem)view.Cards[2];
 
-        model.SetEnabled(true);
-        Assert.Equal("Turn off", button.ButtonText);
+        // Turning Night light on applies immediately even while Schedule is off, and time pickers stay hidden.
+        model.SetOn(true);
+        Assert.True(night.IsOn);
+        Assert.False(schedule.IsOn);
+        Assert.DoesNotContain(view.Cards, c => c is ChoiceItem);
+
+        // Turning Schedule on reveals the Turn on at / Turn off at pickers.
+        model.SetScheduled(true);
+        Assert.True(schedule.IsOn);
+        var start = Assert.IsType<ChoiceItem>(view.Cards[3]);
         var other = WarmLightModel.TimeNames.First(n => n != model.StartName);
         model.SetStart(other);
         Assert.Equal(other, start.Selected);
@@ -108,9 +116,14 @@ public class DisplayModelTests
         start.Selected = picked; // the card writes the model
         Assert.Equal(picked, model.StartName);
 
+        // Turning Schedule off hides the pickers without turning Night light off.
+        model.SetScheduled(false);
+        Assert.True(model.IsOn);
+        Assert.DoesNotContain(view.Cards, c => c is ChoiceItem);
+
         view.Dispose();
-        model.SetEnabled(false);
-        Assert.Equal("Turn off", button.ButtonText); // a dropped card no longer listens
+        model.SetOn(false);
+        Assert.True(night.IsOn); // a dropped card no longer listens
         Assert.False(model.IsOn);
     }
 

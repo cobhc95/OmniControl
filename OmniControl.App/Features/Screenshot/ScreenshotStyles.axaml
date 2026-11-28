@@ -20,7 +20,13 @@
         <Setter Property="Edge" Value="{DynamicResource BrushAccent}" />
         <Setter Property="HandleSize" Value="{StaticResource CaptureHandleSize}" />
         <Setter Property="HandleReach" Value="{StaticResource CaptureHandleReach}" />
+        <Setter Property="GuideWidth" Value="{StaticResource CaptureGuideWidth}" />
     </Style>
+    <!-- Button.toolicon.magnet = the action bar's Snap to windows switch (docs/mockups/screenshot-snap.html): the magnet while on (.selected
+         gives the accent look), the struck-out magnet while off (.off), dimmed while Alt pauses it (.paused) -->
+    <Style Selector="Button.toolicon.magnet > Path.glyph"><Setter Property="Data" Value="{StaticResource ShotMagnetIcon}" /></Style>
+    <Style Selector="Button.toolicon.magnet.off > Path.glyph"><Setter Property="Data" Value="{StaticResource ShotMagnetOffIcon}" /></Style>
+    <Style Selector="Button.toolicon.magnet.paused > Path.glyph"><Setter Property="Opacity" Value="0.5" /></Style>
     <!-- The text tool's box: quiet (see-through, a 1 px accent edge in every state, no thicker focus edge), its words in the drawing's
          colour and size (bound in CaptureOverlay), and selected words on the theme's selection wash in the same colour -->
     <Style Selector="TextBox.shottext">

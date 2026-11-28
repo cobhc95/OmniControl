@@ -25,6 +25,7 @@ public sealed partial class VolumePageViewModel
             if (!SetProperty(ref _isEasy, value)) return;
             _settings.View.Value = value ? VolumeView.Easy : VolumeView.Advanced;
             OnPropertyChanged(nameof(IsAdvanced));
+            SyncLive();
             if (value) Easy.Shown();
         }
     }

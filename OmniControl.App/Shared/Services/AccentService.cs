@@ -90,7 +90,7 @@ public static class AccentService
 
     /// Intensity: 0 = softest (twice Windows' shade), <see cref="WindowsIntensity"/> = Windows' own shade, <see cref="MaxIntensity"/> = the colour
     /// unshaded; <see cref="DefaultIntensity"/> is close to the raw colour, as Windows' toggles look.
-    public const int WindowsIntensity = 50, DefaultIntensity = 85, MaxIntensity = 100;
+    public const int WindowsIntensity = 50, DefaultIntensity = 75, MaxIntensity = 100;
 
     /// Windows accent, then the fixed colours (the galleries that offer no custom colour, such as the OSD's).
     public static IReadOnlyList<string> Names { get; } = Presets.Select(p => p.Name).Prepend(WindowsName).ToList();

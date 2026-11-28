@@ -28,7 +28,7 @@ public sealed partial class AutomationService : IActionGate, IDisposable
     private readonly Func<IEnumerable<string>> _remembered;
     private readonly RuleRunner _runner;
     private readonly CustomActionRunner _custom;
-    private readonly HotkeyService _emergency = new();
+    private const string EmergencyKeyId = "automation.emergency";
     private readonly Dictionary<string, DateTime> _lastStart = new();              // rule id -> last start (UTC); UI thread only
     private readonly Dictionary<string, Queue<DateTime>> _starts = new();          // recent starts, for the burst limit
     private readonly Dictionary<string, string> _pausedWhy = new();                // rule id -> why it was paused
@@ -92,10 +92,8 @@ public sealed partial class AutomationService : IActionGate, IDisposable
         hotkeys.RegisterPickerCommand(MakeNewCustomAction());
 
         if (userRules)
-        {
-            _emergency.Failed += gesture => _report($"Couldn't register {gesture}, the key that pauses all rules: another program uses it.");
-            _emergency.Apply(new[] { (ReservedKeys.Emergency, (Action)(() => Dispatcher.UIThread.Post(TogglePause))) });
-        }
+            hotkeys.PinKey(EmergencyKeyId, ReservedKeys.Emergency, () => Dispatcher.UIThread.Post(TogglePause),
+                gesture => _report($"Couldn't register {gesture}, the key that pauses all rules: another program uses it."));
 
         StartLive();
         // Started by its start-up entry: the "At log in" trigger fires.
@@ -472,7 +470,7 @@ public sealed partial class AutomationService : IActionGate, IDisposable
         _stopRuns.Cancel();
         _stopRuns.Dispose();
         StopTriggers();
-        _emergency.Dispose();
+        _hotkeys.PinKey(EmergencyKeyId, null, null);
         _keepAwake.Dispose();
     }
 }

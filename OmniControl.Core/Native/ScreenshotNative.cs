@@ -38,6 +38,19 @@ internal static class ScreenshotNative
     [DllImport("user32.dll")] public static extern bool GetWindowRect(IntPtr hwnd, out Rect rect);
     [DllImport("dwmapi.dll")] public static extern int DwmGetWindowAttribute(IntPtr hwnd, int attribute, out Rect value, int size);
 
+    // The windows behind the area overlay (its snap edges and window picking)
+    public delegate bool WindowVisit(IntPtr hwnd, IntPtr data);
+    public const int DwmCloaked = 14;
+    public const long WsExTransparent = 0x00000020;
+    public const int VkMenu = 0x12;
+    [DllImport("dwmapi.dll", EntryPoint = "DwmGetWindowAttribute")] public static extern int DwmGetWindowNumber(IntPtr hwnd, int attribute, out int value, int size);
+    [DllImport("user32.dll")] public static extern bool EnumWindows(WindowVisit visit, IntPtr data);
+    [DllImport("user32.dll")] public static extern bool IsWindowVisible(IntPtr hwnd);
+    [DllImport("user32.dll")] public static extern bool IsIconic(IntPtr hwnd);
+    [DllImport("user32.dll", CharSet = CharSet.Unicode)] public static extern int GetWindowText(IntPtr hwnd, char[] text, int max);
+    [DllImport("user32.dll", CharSet = CharSet.Unicode)] public static extern int GetClassName(IntPtr hwnd, char[] name, int max);
+    [DllImport("user32.dll")] public static extern short GetKeyState(int key);
+
     [DllImport("user32.dll")] public static extern IntPtr GetDC(IntPtr hwnd);
     [DllImport("user32.dll")] public static extern int ReleaseDC(IntPtr hwnd, IntPtr hdc);
     [DllImport("gdi32.dll")] public static extern IntPtr CreateCompatibleDC(IntPtr hdc);

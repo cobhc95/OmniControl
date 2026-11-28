@@ -58,13 +58,14 @@ public static class ProcessPower
     /// blocking one, which stops every thread for its whole length; the runtime may still do part of a background collection blocking.
     public static void Compact() => GC.Collect(2, GCCollectionMode.Forced, blocking: false, compacting: false);
 
-    /// After big parts were let go (the windows after a long hide): Skia's caches are emptied, one full background collection is requested
-    /// (<see cref="Compact"/>), and the large objects are marked to be compacted at the runtime's own next full blocking collection. The caller trims the working set afterwards (<see cref="TrimWorkingSet"/>).
+    /// After big parts were let go (the windows after a long hide): Skia's caches are emptied, and one compacting full collection
+    /// (with large-object compaction) shrinks committed Gen2 and LOH segments before the caller trims the working set (<see cref="TrimWorkingSet"/>).
+    /// Call only while no sound runs through the process, preferably on a worker thread.
     public static void CompactAfterRelease()
     {
         SKGraphics.PurgeAllCaches();
         GCSettings.LargeObjectHeapCompactionMode = GCLargeObjectHeapCompactionMode.CompactOnce;
-        Compact();
+        GC.Collect(2, GCCollectionMode.Forced, blocking: true, compacting: true);
     }
 
     /// Asks Windows to take back the pages this process holds but is not using, so Task Manager's figure drops (they are paged in again if used).

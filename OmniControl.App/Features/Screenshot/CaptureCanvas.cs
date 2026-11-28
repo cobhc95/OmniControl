@@ -19,6 +19,7 @@ public sealed class CaptureCanvas : NativeControlHost, IDisposable
     public static readonly StyledProperty<IBrush?> EdgeProperty = AvaloniaProperty.Register<CaptureCanvas, IBrush?>(nameof(Edge));
     public static readonly StyledProperty<double> HandleSizeProperty = AvaloniaProperty.Register<CaptureCanvas, double>(nameof(HandleSize), 8);
     public static readonly StyledProperty<double> HandleReachProperty = AvaloniaProperty.Register<CaptureCanvas, double>(nameof(HandleReach), 8);
+    public static readonly StyledProperty<double> GuideWidthProperty = AvaloniaProperty.Register<CaptureCanvas, double>(nameof(GuideWidth), 1.5);
 
     /// The wash over everything outside the selection.
     public IBrush? Dim { get => GetValue(DimProperty); set => SetValue(DimProperty, value); }
@@ -27,6 +28,9 @@ public sealed class CaptureCanvas : NativeControlHost, IDisposable
     public IBrush? Edge { get => GetValue(EdgeProperty); set => SetValue(EdgeProperty, value); }
 
     public double HandleSize { get => GetValue(HandleSizeProperty); set => SetValue(HandleSizeProperty, value); }
+
+    /// How thick a snap guide is, in screen units.
+    public double GuideWidth { get => GetValue(GuideWidthProperty); set => SetValue(GuideWidthProperty, value); }
 
     /// How close to a handle (in screen units) a press grabs it.
     public double HandleReach { get => GetValue(HandleReachProperty); set => SetValue(HandleReachProperty, value); }
@@ -108,8 +112,23 @@ public sealed class CaptureCanvas : NativeControlHost, IDisposable
         if (_disposed) return;
         if (Edge is ISolidColorBrush edge) _surface.SetLook(Argb(edge), (int)Math.Round(Scale), (int)Math.Round(HandleSize * Scale));
         _surface.SetSelection(_model.Selection);
+        _surface.SetHighlight(_model.Hovered?.Frame);
+        _surface.SetGuides(GuideLines());
         _painter.Update(_model.Marks, _model.Preview);
         _surface.PaintNow();
+    }
+
+    /// The snap guides as thin rectangles centred on their edges, GuideWidth screen units across.
+    private List<ScreenRect> GuideLines()
+    {
+        var lines = new List<ScreenRect>(_model.Guides.Count);
+        var across = Math.Max(1, (int)Math.Round(GuideWidth * Scale));
+        foreach (var g in _model.Guides)
+        {
+            var at = g.At - across / 2;
+            lines.Add(g.Vertical ? new ScreenRect(at, g.From, across, g.To - g.From) : new ScreenRect(g.From, at, g.To - g.From, across));
+        }
+        return lines;
     }
 
     /// A brush's colour with its opacity folded into the alpha, as ARGB.
@@ -125,8 +144,13 @@ public sealed class CaptureCanvas : NativeControlHost, IDisposable
     private void OnMoved(int x, int y)
     {
         var p = new Point(x, y);
+        _model.AltHeld = PictureSurface.AltHeld;
         if (_model.IsDragging) _model.MoveTo(p);
-        else ShowCursor(CursorFor(_model.GripAt(p, Reach)));
+        else
+        {
+            _model.HoverAt(p);
+            ShowCursor(CursorFor(_model.GripAt(p, Reach)));
+        }
     }
 
     private void OnReleased(int x, int y) => _model.Release(new Point(x, y));

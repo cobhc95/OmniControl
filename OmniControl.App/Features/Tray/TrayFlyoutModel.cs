@@ -49,6 +49,15 @@ public sealed partial class TrayFlyoutModel : ObservableObject, IDisposable
     /// The menu's items or ticks changed: the tray icon builds its menu again.
     public event Action? MenuChanged;
 
+    /// Builds the flyout's lists once for prebuilding its hidden window without starting live watches or device rechecks.
+    public void Warm()
+    {
+        if (!_stale) return;
+        _shown = true;
+        try { Rebuild(); }
+        finally { _shown = false; }
+    }
+
     /// The flyout is about to show: its lists are read now and follow the master lists until <see cref="Hidden"/>.
     public void Showing()
     {

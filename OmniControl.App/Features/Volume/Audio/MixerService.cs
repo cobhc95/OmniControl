@@ -29,9 +29,12 @@ public sealed partial class MixerService : IDisposable
     public IReadOnlyList<AudioDevice> RecordingDevices { get; private set; } = Array.Empty<AudioDevice>();
     public IReadOnlyList<RunningApp> Running { get; private set; } = Array.Empty<RunningApp>();
 
-    /// Raised after a scan that found a change (programs opened or closed, devices changed, volumes moved elsewhere), after every scan while
-    /// a view watches closely, and when a setting a row shows changed here.
+    /// Raised after a scan that found a change (programs opened or closed, devices changed, volumes moved elsewhere),
+    /// after <see cref="ScanAll"/>, and when a setting a row shows changed here.
     public event Action? Updated;
+
+    /// Raised when a close-watch scan found a microphone's level or mute changed outside OmniControl, without triggering full engine reconciliation.
+    public event Action? InputLevelsUpdated;
 
     /// Reports problems the user should know about (a device change Windows refused).
     public Action<string>? Report { get; }
@@ -103,19 +106,22 @@ public sealed partial class MixerService : IDisposable
             _devicesKnown = true;
             RememberNames();
         }
+        var inputLevelsChanged = false;
         if (read.InputLevels is not null && read.Ticket > _levelsTicket)
         {
             _levelsTicket = read.Ticket;
+            inputLevelsChanged = !SameInputLevels(_inputLevels, read.InputLevels);
             _inputLevels = read.InputLevels;
         }
         var devicesChanged = !Devices.SequenceEqual(devicesBefore) || !RecordingDevices.SequenceEqual(recordingBefore);
         if (read.Ticket < _appliedTicket) // an older read that finished after a newer one: only its devices can be newer
         {
             if (devicesChanged) Updated?.Invoke();
+            else if (inputLevelsChanged) InputLevelsUpdated?.Invoke();
             return;
         }
         _appliedTicket = read.Ticket;
-        var announce = read.Announce || _closeWatch.Held || devicesChanged;
+        var announce = read.Announce || devicesChanged;
         try
         {
             foreach (var (pid, path) in read.Paths) _paths.TryAdd(pid, path);
@@ -191,6 +197,17 @@ public sealed partial class MixerService : IDisposable
         }
         SyncSoundPoll();
         if (announce) Updated?.Invoke();
+        else if (inputLevelsChanged) InputLevelsUpdated?.Invoke();
+    }
+
+    private static bool SameInputLevels(IReadOnlyDictionary<string, (int Level, bool Muted)> a, IReadOnlyDictionary<string, (int Level, bool Muted)> b) =>
+        a.Count == b.Count && a.All(p => b.TryGetValue(p.Key, out var v) && v == p.Value);
+
+    private void ReleaseSessions()
+    {
+        foreach (var list in _sessions.Values)
+            foreach (var s in list) s.Dispose();
+        _sessions.Clear();
     }
 
     /// Makes the programs' session objects again on this (UI) thread and groups them by program; forgets what belonged to processes that are gone.
@@ -198,14 +215,14 @@ public sealed partial class MixerService : IDisposable
     {
         var live = CoreAudio.Sessions().Where(s => s.ProcessId != Environment.ProcessId).ToList(); // OmniControl's own effects playback is not a program row
         _heldSessions = SessionKey.Sorted(live.Select(SessionKey.Of));
-        _sessions.Clear();
+        ReleaseSessions();
         var livePids = new HashSet<int>();
         foreach (var s in live)
         {
             livePids.Add(s.ProcessId);
-            if (PathOf(s.ProcessId) is not { } path) continue;
+            if (PathOf(s.ProcessId) is not { } path) { s.Dispose(); continue; }
             var key = AppAudioEntry.KeyFor(path);
-            if (IgnoredPrograms.Contains(key)) continue;
+            if (IgnoredPrograms.Contains(key)) { s.Dispose(); continue; }
             if (!_sessions.TryGetValue(key, out var list)) _sessions[key] = list = new();
             list.Add(s);
         }
@@ -437,6 +454,7 @@ public sealed partial class MixerService : IDisposable
         _timer.Stop();
         _closeWatch.Changed -= OnCloseWatchChanged;
         StopWatching();
+        ReleaseSessions();
         _meters.Dispose();
     }
 

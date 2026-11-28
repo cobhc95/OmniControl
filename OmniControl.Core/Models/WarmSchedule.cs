@@ -18,6 +18,19 @@ public static class WarmSchedule
         return Math.Clamp(Math.Min(at / ramp, (length - at) / ramp), 0, 1);
     }
 
+    /// Minutes until the schedule's next ramp change while inside the window: 0 while ramping in or out, minutes until ramp-out begins
+    /// while on the steady plateau, or null when outside the window.
+    public static double? NextChangeMinutes(double now, int start, int end)
+    {
+        var length = Mod(end - start);
+        if (length == 0) return null;
+        var at = Mod(now - start);
+        if (at >= length) return null;
+        var ramp = Math.Min(RampMinutes, length / 2.0);
+        if (at < ramp || at >= length - ramp) return 0;
+        return length - ramp - at;
+    }
+
     /// The temperature to show: the user's own (<paramref name="userKelvin"/>) moved <paramref name="factor"/> of the way towards
     /// <paramref name="targetKelvin"/>, but never made cooler than the user chose, so a picture that is already warmer stays as it is.
     public static int Kelvin(int userKelvin, double factor, int targetKelvin) =>

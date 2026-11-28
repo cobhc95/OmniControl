@@ -15,6 +15,7 @@ public sealed partial class ShellViewModel
     private PageRestore? _restoreAll;
     private readonly List<IRestorable> _restoreParts = new(); // what "Restore all" restores: the pages there are now, then the Actions and Hotkeys window's parts
     private IReadOnlyList<IRestorable> _windowParts = Array.Empty<IRestorable>();
+    private bool _restoreWatching;
 
     private Task<bool> ConfirmRestore(RestoreQuestion q) => _dialogs.AskAsync(new DialogMessage(q.Title, q.Text, q.Button));
 
@@ -32,7 +33,33 @@ public sealed partial class ShellViewModel
             devices => { _ = keysRestorer.RestoreAsync(); }));
         _windowParts = new IRestorable[] { keys, windowsKeys };
         RefreshRestoreParts();
-        _restoreCheck.Tick += (_, _) => RefreshRestore();
+        _restoreCheck.Tick += OnRestoreCheckDue;
+    }
+
+    private void OnRestoreCheckDue(object? sender, EventArgs e)
+    {
+        _restoreCheck.Stop();
+        if (_windowShown) RefreshRestore();
+    }
+
+    private void OnRestoreSourceChanged()
+    {
+        if (!_windowShown) return;
+        if (!Dispatcher.UIThread.CheckAccess())
+        {
+            Dispatcher.UIThread.Post(ScheduleRestoreRefresh, DispatcherPriority.Background);
+            return;
+        }
+        ScheduleRestoreRefresh();
+    }
+
+    private void OnRestoreStateChanged(Features.States.StateChange _) => OnRestoreSourceChanged();
+
+    private void ScheduleRestoreRefresh()
+    {
+        if (!_windowShown) return;
+        _restoreCheck.Stop();
+        _restoreCheck.Start();
     }
 
     /// "Restore all", made with App settings, its only user.
@@ -80,11 +107,27 @@ public sealed partial class ShellViewModel
         if (slot.IfMade is { } page && RestorerOf(slot) is { } restorer) page.AttachRestorer(restorer);
     }
 
-    /// The restore check runs only while the window can be seen (<see cref="SetWindowShown"/>); showing it looks at once.
+    /// The restore check reacts to setting and state changes only while the window can be seen (<see cref="SetWindowShown"/>); showing it looks at once.
     private void FollowRestoreCheck(bool shown)
     {
-        _restoreCheck.IsEnabled = shown;
+        if (shown != _restoreWatching)
+        {
+            _restoreWatching = shown;
+            if (shown)
+            {
+                AppDataStore.Changed += OnRestoreSourceChanged;
+                _states.ValueChanged += OnRestoreStateChanged;
+                _hotkeys.BindingsSaved += OnRestoreSourceChanged;
+            }
+            else
+            {
+                AppDataStore.Changed -= OnRestoreSourceChanged;
+                _states.ValueChanged -= OnRestoreStateChanged;
+                _hotkeys.BindingsSaved -= OnRestoreSourceChanged;
+            }
+        }
         if (shown) RefreshRestore();
+        else _restoreCheck.Stop();
     }
 
     /// The open page's button looks again at whether the page is at its defaults.
@@ -96,7 +139,8 @@ public sealed partial class ShellViewModel
 
     private void DisposeRestore()
     {
-        _restoreCheck.Stop();
+        FollowRestoreCheck(false);
+        _restoreCheck.Tick -= OnRestoreCheckDue;
         foreach (var restorer in _restorers.Values) restorer.Dispose();
         _actionsWindow.Restorer?.Dispose();
         _restoreAll?.Dispose();
